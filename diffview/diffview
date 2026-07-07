@@ -1,0 +1,242 @@
+#!/usr/bin/env bash
+# diffview — review your branch across the ALIDA repos.
+#
+# The repo paths + each repo's prod branch live in ~/.config/diffview/config.
+# The comparison is always the *cumulative* net diff (git diff base...head):
+# everything on <head> that isn't on <base>.
+#
+#   diffview                        review all repos, grouped by feature (default)
+#   diffview status [--json]        list feature groups + review progress, no browser
+#   diffview stop                   quit the running review server
+#   diffview verify <group> ...     author a group's verify playbook (see below)
+#   diffview group move <g> <repo:sha>…   curate which commits land in a group
+#   diffview list                   show the repo registry
+#   diffview <repo> [head] [base]   one repo, flat net diff  (delta/html)
+#   diffview all    [head]          every repo, flat net diff, one view
+#
+# Scope flags (grouped review + status):
+#   --repos a,b     limit to these repos            --head REF    override head
+#   --base REF      override base                   --group scope|time
+#   --since 7d      only commits since              --author me   only your commits
+#
+# Flat-diff renderers (auto: delta if installed, else --html):
+#   -s | --side-by-side   delta side-by-side layout
+#   --html                self-contained HTML page, opened in the browser
+#   --structural          difftastic (syntax-aware) diff   [needs difft]
+#
+# Examples:
+#   diffview                             # all repos, grouped by feature
+#   diffview status --json               # machine-readable review state
+#   diffview --repos ad_apps,ad_libraries --author me
+#   diffview ad_platform                 # flat net diff, dev_amp vs origin/dev
+#   diffview all -s                      # all repos, flat, side-by-side
+set -euo pipefail
+
+CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/diffview"
+# shellcheck source=/dev/null
+[ -f "$CFG_DIR/config" ] || { echo "diffview: missing $CFG_DIR/config" >&2; exit 1; }
+source "$CFG_DIR/config"
+
+usage() { sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+
+# `verify`/`group` take freeform args meant for dv_core, not our flag parser.
+if [ "${1:-}" = "verify" ] || [ "${1:-}" = "group" ]; then
+  sub="$1"; shift
+  exec uv run --no-project python3 "$CFG_DIR/dv_core.py" "$sub" "$@"
+fi
+
+# --- parse flags (values may be --k v or --k=v) ---
+SIDE=""; MODE="auto"; POS=()
+REPOS_ARG=""; HEAD_OVERRIDE=""; BASE_OVERRIDE=""; GROUP="scope"
+SINCE=""; AUTHOR=""; JSON=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help) usage 0 ;;
+    -s|--side-by-side) SIDE=1 ;;
+    --html) MODE="html" ;;
+    --delta) MODE="delta" ;;
+    --structural) MODE="structural" ;;
+    --json) JSON=1 ;;
+    --repos) REPOS_ARG="$2"; shift ;;   --repos=*) REPOS_ARG="${1#*=}" ;;
+    --head)  HEAD_OVERRIDE="$2"; shift ;;  --head=*)  HEAD_OVERRIDE="${1#*=}" ;;
+    --base)  BASE_OVERRIDE="$2"; shift ;;  --base=*)  BASE_OVERRIDE="${1#*=}" ;;
+    --group) GROUP="$2"; shift ;;       --group=*) GROUP="${1#*=}" ;;
+    --since) SINCE="$2"; shift ;;       --since=*) SINCE="${1#*=}" ;;
+    --author) AUTHOR="$2"; shift ;;     --author=*) AUTHOR="${1#*=}" ;;
+    -*) echo "diffview: unknown flag $1" >&2; exit 2 ;;
+    *) POS+=("$1") ;;
+  esac
+  shift
+done
+set -- "${POS[@]+"${POS[@]}"}"
+cmd="${1:-}"
+
+# --- registry helpers ---
+prod_of() { local n; for e in "${REPOS[@]}"; do n="${e%%:*}"; [ "$n" = "$1" ] && { echo "${e##*:}"; return; }; done; }
+repo_names() { for e in "${REPOS[@]}"; do echo "${e%%:*}"; done; }
+
+if [ "$cmd" = "list" ]; then
+  printf 'ALIDA_ROOT=%s\n' "$ALIDA_ROOT"
+  for e in "${REPOS[@]}"; do printf '  %-16s prod=%s\n' "${e%%:*}" "${e##*:}"; done
+  exit 0
+fi
+
+# default head: config DEFAULT_HEAD, else PERSONAL_BRANCH from .env, else dev_amp
+if [ -z "${DEFAULT_HEAD:-}" ]; then
+  DEFAULT_HEAD="$(grep -sE '^PERSONAL_BRANCH=' "$ALIDA_ROOT/.claude/.env" | cut -d= -f2 | tr -d '"')"
+  DEFAULT_HEAD="${DEFAULT_HEAD:-dev_amp}"
+fi
+
+# resolve base: prefer a ref that exists; else origin/<prod>
+resolve_base() {  # $1=dir  $2=requested-base  $3=prod
+  local dir="$1" req="$2" prod="$3"
+  if [ -n "$req" ] && git -C "$dir" rev-parse --verify -q "$req" >/dev/null 2>&1; then
+    echo "$req"; else echo "origin/$prod"; fi
+}
+
+# ======================= new: grouped review engine =======================
+resolve_repo_set() {  # -> REPO_SET[]
+  REPO_SET=()
+  if [ -n "$REPOS_ARG" ]; then
+    IFS=',' read -r -a REPO_SET <<< "$REPOS_ARG"
+  else
+    while read -r r; do REPO_SET+=("$r"); done < <(repo_names)
+  fi
+}
+
+build_targets_json() {  # args: repo names
+  local first=1 prod dir base head
+  printf '['
+  for r in "$@"; do
+    prod="$(prod_of "$r")"
+    [ -n "$prod" ] || { echo "diffview: unknown repo '$r' (try: diffview list)" >&2; exit 1; }
+    dir="$ALIDA_ROOT/$r"
+    git -C "$dir" fetch -q origin >/dev/null 2>&1 || true
+    base="$(resolve_base "$dir" "$BASE_OVERRIDE" "$prod")"
+    head="${HEAD_OVERRIDE:-$DEFAULT_HEAD}"
+    [ $first -eq 1 ] || printf ','; first=0
+    printf '{"repo":"%s","dir":"%s","base":"%s","head":"%s"}' "$r" "$dir" "$base" "$head"
+  done
+  printf ']'
+}
+
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/diffview"
+PORT="${DIFFVIEW_PORT:-8765}"
+
+build_spec() {  # -> spec JSON on stdout
+  resolve_repo_set
+  local author_json=null since_json=null a="$AUTHOR"
+  [ "$a" = "me" ] && a="$(git config user.email 2>/dev/null || true)"
+  [ -n "$a" ] && author_json="\"$a\""
+  [ -n "$SINCE" ] && since_json="\"$SINCE\""
+  local title="review · ${HEAD_OVERRIDE:-$DEFAULT_HEAD} vs prod"
+  printf '{"title":"%s","group":"%s","author":%s,"since":%s,"targets":%s}' \
+    "$title" "$GROUP" "$author_json" "$since_json" \
+    "$(build_targets_json "${REPO_SET[@]}")"
+}
+
+run_engine() {  # $@ -> dv_core.py args (e.g. status --json)
+  build_spec | uv run --no-project python3 "$CFG_DIR/dv_core.py" "$@"
+}
+
+server_stop() {
+  if [ -f "$DATA_DIR/server.pid" ] && kill "$(cat "$DATA_DIR/server.pid")" 2>/dev/null; then
+    echo "diffview: server stopped"
+  else
+    echo "diffview: no server running"
+  fi
+  rm -f "$DATA_DIR/server.pid"
+}
+
+server_start() {
+  mkdir -p "$DATA_DIR"
+  build_spec > "$DATA_DIR/spec.json"
+  [ -f "$DATA_DIR/server.pid" ] && kill "$(cat "$DATA_DIR/server.pid")" 2>/dev/null || true
+  DIFFVIEW_PORT="$PORT" nohup uv run --no-project python3 "$CFG_DIR/serve.py" \
+    "$DATA_DIR/spec.json" "$PORT" > "$DATA_DIR/server.log" 2>&1 &
+  echo $! > "$DATA_DIR/server.pid"
+  disown 2>/dev/null || true
+  local url="http://127.0.0.1:$PORT"
+  echo "diffview: serving $url   (diffview stop to quit)"
+  ( xdg-open "$url" >/dev/null 2>&1 & ) || true
+}
+
+case "$cmd" in
+  status)          run_engine status ${JSON:+--json}; exit 0 ;;
+  stop)            server_stop; exit 0 ;;
+  ""|review)       server_start; exit 0 ;;   # plain diffview: grouped review dashboard
+esac
+
+# ==================== legacy: flat net-diff renderers =====================
+# choose renderer
+if [ "$MODE" = "auto" ]; then
+  command -v delta >/dev/null 2>&1 && MODE="delta" || MODE="html"
+fi
+
+declare -a T_REPO T_DIR T_BASE T_HEAD
+add_target() {  # $1=repo $2=head $3=base
+  local repo="$1" head="$2" base_req="$3"
+  local prod; prod="$(prod_of "$repo")"
+  [ -n "$prod" ] || { echo "diffview: unknown repo '$repo' (try: diffview list)" >&2; exit 1; }
+  local dir="$ALIDA_ROOT/$repo"
+  git -C "$dir" fetch -q origin >/dev/null 2>&1 || true
+  local base; base="$(resolve_base "$dir" "$base_req" "$prod")"
+  T_REPO+=("$repo"); T_DIR+=("$dir"); T_BASE+=("$base"); T_HEAD+=("${head:-$DEFAULT_HEAD}")
+}
+
+if [ "$cmd" = "all" ]; then
+  head="${2:-$DEFAULT_HEAD}"; TITLE="all repos · $head vs prod"
+  while read -r r; do add_target "$r" "$head" ""; done < <(repo_names)
+else
+  add_target "$cmd" "${2:-}" "${3:-}"
+  TITLE="$cmd · ${T_HEAD[0]} vs ${T_BASE[0]}"
+fi
+
+banner() { printf '\n\033[1;38;5;39m━━━ %s  (%s … %s) ━━━\033[0m\n\n' "$1" "$2" "$3"; }
+
+render_delta() {
+  local args=(--navigate --line-numbers --paging=always)
+  [ -n "$SIDE" ] && args+=(--side-by-side)
+  { for i in "${!T_REPO[@]}"; do
+      banner "${T_REPO[$i]}" "${T_BASE[$i]}" "${T_HEAD[$i]}"
+      git -C "${T_DIR[$i]}" diff "${T_BASE[$i]}...${T_HEAD[$i]}"
+    done; } | delta "${args[@]}"
+}
+
+render_less() {
+  { for i in "${!T_REPO[@]}"; do
+      banner "${T_REPO[$i]}" "${T_BASE[$i]}" "${T_HEAD[$i]}"
+      git -C "${T_DIR[$i]}" -c color.diff=always diff "${T_BASE[$i]}...${T_HEAD[$i]}"
+    done; } | less -R
+}
+
+render_structural() {
+  command -v difft >/dev/null 2>&1 || { echo "diffview: difft not installed" >&2; exit 1; }
+  { for i in "${!T_REPO[@]}"; do
+      banner "${T_REPO[$i]}" "${T_BASE[$i]}" "${T_HEAD[$i]}"
+      GIT_EXTERNAL_DIFF=difft git -C "${T_DIR[$i]}" diff "${T_BASE[$i]}...${T_HEAD[$i]}"
+    done; } | less -R
+}
+
+render_html() {
+  local work; work="$(mktemp -d "${TMPDIR:-/tmp}/diffview.XXXXXX")"
+  local manifest="$work/manifest.json" out="$work/diff.html" i sep=""
+  { printf '{"title":%s,"sections":[' "\"$TITLE\""
+    for i in "${!T_REPO[@]}"; do
+      local df="$work/${T_REPO[$i]}.diff"
+      git -C "${T_DIR[$i]}" diff "${T_BASE[$i]}...${T_HEAD[$i]}" > "$df"
+      local c a b; c="$(git -C "${T_DIR[$i]}" rev-list --left-right --count "${T_BASE[$i]}...${T_HEAD[$i]}" 2>/dev/null || echo '0	0')"
+      b="${c%%	*}"; a="${c##*	}"
+      printf '%s{"repo":"%s","base":"%s","head":"%s","ahead":%s,"behind":%s,"diff_file":"%s"}' \
+        "$sep" "${T_REPO[$i]}" "${T_BASE[$i]}" "${T_HEAD[$i]}" "$a" "$b" "$df"; sep=","
+    done; printf ']}'; } > "$manifest"
+  uv run --no-project python3 "$CFG_DIR/render_diff.py" "$manifest" "$out" >/dev/null
+  echo "$out"; ( xdg-open "$out" >/dev/null 2>&1 & ) || true
+}
+
+case "$MODE" in
+  delta)      render_delta ;;
+  html)       render_html ;;
+  structural) render_structural ;;
+  *)          render_less ;;
+esac

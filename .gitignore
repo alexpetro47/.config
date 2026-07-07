@@ -52,6 +52,16 @@ tmux-sessionizer/*
 !tmux-sessionizer/tmux-sessionizer
 !tmux-sessionizer/tmux-sessionizer.conf
 
+!diffview/
+diffview/*
+!diffview/diffview
+!diffview/dv_core.py
+!diffview/serve.py
+!diffview/render_diff.py
+!diffview/config
+!diffview/install.sh
+!diffview/README.md
+
 !zsh/
 zsh/*
 !zsh/.zshrc

@@ -1,0 +1,19 @@
+# diffview machine config — the only file that knows about this machine.
+# Everything else in ~/.config/diffview is generic. Edit paths/branches here.
+
+# Root that holds all the repos (each repo lives at $ALIDA_ROOT/<name>).
+ALIDA_ROOT="${ALIDA_ROOT:-/home/alexpetro/Documents/ALIDA}"
+
+# Repo registry: "<name>:<prod-branch>", one per line.
+# <name> is both the command argument and the subdirectory under ALIDA_ROOT.
+# <prod-branch> is the PR-target branch used as the default comparison base.
+REPOS=(
+  ad_platform:dev
+  ad_modelpacks:main
+  ad_libraries:develop
+  ad_apps:dev
+)
+
+# Default head ref when you don't pass one. Empty => read PERSONAL_BRANCH from
+# $ALIDA_ROOT/.claude/.env, falling back to "dev_amp".
+DEFAULT_HEAD="${DEFAULT_HEAD:-}"
