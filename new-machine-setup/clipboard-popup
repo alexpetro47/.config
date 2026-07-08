@@ -1,0 +1,104 @@
+#!/bin/bash
+# clipboard-popup - A floating clipboard-history + emoji picker.
+#
+# Alt+Ctrl+v opens a sticky popup listing the last 10 clipboard entries. Press
+#   j k l ; ' n m , . /   pick that row (newest first)
+#   e                     search all emojis (rofimoji)
+#   q / Esc               dismiss
+# The picked entry/emoji is auto-pasted into the window you came from (Ctrl+Shift+V
+# into terminals, Ctrl+V elsewhere). Hit the keybind again to toggle it closed.
+#
+# History comes from the greenclip daemon (started by i3). Selecting a history
+# line hands it back to `greenclip print <line>`, which loads that entry's full
+# original content (multiline included) onto the clipboard.
+#
+# For i3: bindsym $mod+Ctrl+v exec --no-startup-id ~/.local/bin/clipboard-popup
+#         exec --no-startup-id greenclip daemon
+#         for_window [class="clipboard-popup"] floating enable, border pixel 4, \
+#                    resize set 920 620, move position center, sticky enable
+
+CLASS="clipboard-popup"
+
+# ---- launcher branch: toggle the sticky popup terminal ----------------------
+if [[ "$1" != "--run" ]]; then
+    if pgrep -f "kitty --class $CLASS" >/dev/null 2>&1; then
+        pkill -f "kitty --class $CLASS"
+        exit 0
+    fi
+    # Remember the window we were in so the pick can be pasted back into it.
+    target=$(xdotool getactivewindow 2>/dev/null)
+    exec kitty --class "$CLASS" -o font_size=13 -o background_opacity=0.95 \
+         -e "$(readlink -f "$0")" --run "$target"
+fi
+
+# ---- run branch -------------------------------------------------------------
+TARGET="$2"
+
+# Refocus the original window and send the paste shortcut it expects.
+paste_into_target() {
+    [[ -z "$TARGET" ]] && return
+    local cls keys="ctrl+shift+v"
+    cls=$(xdotool getwindowclassname "$TARGET" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+    case "$cls" in
+        *kitty*|*alacritty*|*ghostty*|*term*|*konsole*|*tilix*|*foot*)
+            keys="ctrl+shift+v" ;;
+    esac
+    xdotool windowactivate --sync "$TARGET" 2>/dev/null
+    xdotool key --clearmodifiers "$keys"
+}
+
+# Pull the 5 most recent history entries (raw display lines; kept verbatim so
+# they can be handed straight back to greenclip to reselect).
+mapfile -t entries < <(greenclip print 2>/dev/null | grep -v '^[[:space:]]*$' | head -10)
+labels=(j k l ';' "'" n m ',' '.' '/')
+
+clear
+# Draw a clean box-table sized to the terminal so long entries are truncated
+# to a single line rather than wrapped.
+cols=$(tput cols 2>/dev/null || echo 100)
+(( cols < 24 )) && cols=24
+inner=$(( cols - 8 ))            # width of the content cell
+
+bar() { local n=$1 out=; while (( n-- > 0 )); do out+='─'; done; printf '%s' "$out"; }
+
+printf '\n  \xF0\x9F\x93\x8B  Clipboard history\n\n'
+printf '┌───┬%s┐\n' "$(bar $((inner + 2)))"
+if [[ ${#entries[@]} -eq 0 ]]; then
+    msg='(empty - copy something, or check: greenclip daemon)'
+    (( ${#msg} > inner )) && msg="${msg:0:inner-1}…"
+    printf '│   │ %s%*s │\n' "$msg" $(( inner - ${#msg} )) ''
+else
+    for i in "${!entries[@]}"; do
+        disp="${entries[$i]//$'\t'/ }"
+        (( ${#disp} > inner )) && disp="${disp:0:inner-1}…"
+        printf '│ %s │ %s%*s │\n' "${labels[$i]}" "$disp" $(( inner - ${#disp} )) ''
+    done
+fi
+printf '└───┴%s┘\n' "$(bar $((inner + 2)))"
+printf '\n   e   \xF0\x9F\x98\x80 search emojis        q   quit\n\n'
+
+read -rsn1 key
+case "$key" in
+    j) idx=0 ;;
+    k) idx=1 ;;
+    l) idx=2 ;;
+    ';') idx=3 ;;
+    "'") idx=4 ;;
+    n) idx=5 ;;
+    m) idx=6 ;;
+    ',') idx=7 ;;
+    '.') idx=8 ;;
+    '/') idx=9 ;;
+    e|E)
+        # Close this popup so i3 refocuses the target, then let rofimoji pick +
+        # type an emoji into it. Detached so it outlives the closing terminal.
+        setsid -f bash -c "sleep 0.2; xdotool windowactivate --sync '$TARGET' 2>/dev/null; rofimoji --action type" >/dev/null 2>&1
+        exit 0 ;;
+    *) exit 0 ;;  # q, Esc, Enter, anything else
+esac
+
+sel="${entries[$idx]}"
+[[ -z "$sel" ]] && exit 0
+# Load the chosen entry's full content onto the clipboard, then paste it back.
+greenclip print "$sel" >/dev/null 2>&1
+paste_into_target

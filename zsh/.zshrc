@@ -1,4 +1,34 @@
 
+# alida dev debugging, agent context windows
+payloads() {
+  local dest=~/Documents/ALIDA/agent_payloads
+  rm -rf "$dest" && mkdir -p "$dest"
+  # keep only the 3 newest payloads per agent type: select + tar inside the
+  # container (filenames are ts-prefixed, so sort == chronological), stream out
+  docker exec ad_platform-dev sh -c '
+    cd /tmp/agent_payloads 2>/dev/null || exit 0
+    set --
+    for d in */; do
+      for f in $(ls -1 "$d"*.json 2>/dev/null | sort | tail -3); do
+        set -- "$@" "$f"
+      done
+    done
+    [ "$#" -gt 0 ] && tar -cf - "$@"
+  ' | tar -xf - -C "$dest"
+  echo "synced $(find "$dest" -name '*.json' | wc -l | tr -d ' ') payloads (3 newest/type) -> $dest"
+}
+
+
+
+
+
+
+
+
+
+
+
+
 # Source API keys from ~/.claude/.env
 [ -f "$HOME/.claude/.env" ] && export $(grep -v '^#' "$HOME/.claude/.env" | xargs)
 

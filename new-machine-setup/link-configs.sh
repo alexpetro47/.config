@@ -191,6 +191,11 @@ if [ -f "$CONFIG_DIR/new-machine-setup/audio-analyze" ]; then
     _link_config "$CONFIG_DIR/new-machine-setup/audio-analyze" "$HOME/.local/bin/audio-analyze"
 fi
 
+# Guitar tab popup (record a riff -> engrave notation + tablature)
+if [ -f "$CONFIG_DIR/new-machine-setup/guitar-tab-popup" ]; then
+    _link_config "$CONFIG_DIR/new-machine-setup/guitar-tab-popup" "$HOME/.local/bin/guitar-tab-popup"
+fi
+
 # Ralf (ClawdBot CLI wrapper)
 if [ -f "$CONFIG_DIR/new-machine-setup/ralf" ]; then
     _link_config "$CONFIG_DIR/new-machine-setup/ralf" "$HOME/.local/bin/ralf"
@@ -204,6 +209,11 @@ fi
 # Black hole break reminder toggle (Ghostty shader terminal)
 if [ -f "$CONFIG_DIR/new-machine-setup/blackhole-toggle" ]; then
     _link_config "$CONFIG_DIR/new-machine-setup/blackhole-toggle" "$HOME/.local/bin/blackhole-toggle"
+fi
+
+# Clipboard history + emoji popup
+if [ -f "$CONFIG_DIR/new-machine-setup/clipboard-popup" ]; then
+    _link_config "$CONFIG_DIR/new-machine-setup/clipboard-popup" "$HOME/.local/bin/clipboard-popup"
 fi
 
 

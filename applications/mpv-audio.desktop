@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
-Name=Play audio (ffplay)
-Comment=Play an audio file with ffplay — no window, auto-exits at end
-Exec=ffplay -nodisp -autoexit -loglevel quiet %f
+Name=Play audio (mpv)
+Comment=Play an audio file with mpv in a floating popup window with playback controls
+Exec=mpv %f
 Terminal=false
 NoDisplay=true
 MimeType=audio/vnd.wave;audio/x-wav;audio/wav;audio/x-aiff;audio/x-aifc;audio/flac;audio/mpeg;audio/ogg;audio/mp4;audio/aac;audio/x-ms-wma;audio/x-wavpack;

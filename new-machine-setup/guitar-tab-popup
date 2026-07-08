@@ -1,0 +1,80 @@
+#!/bin/bash
+# guitar-tab-popup - Record a riff off the audio interface, then engrave it as
+# notation + tablature (guitar-tabber / LilyPond) in a sticky floating popup.
+# The score is saved to ~/Music/tabs/ and opened in the image viewer.
+#
+# Toggle: press the keybind once to open the popup and start recording; press
+# [Enter] in the popup to stop and engrave; press the keybind again to cancel.
+# For i3: bindsym $mod+Shift+g exec --no-startup-id ~/.local/bin/guitar-tab-popup
+#         for_window [class="guitar-tab"] floating enable, resize set 560 260, \
+#                    move position center, sticky enable
+#
+# Env overrides:
+#   GUITAR_TAB_SOURCE  force a capture source (see `pactl list short sources`)
+
+GT_DIR="$HOME/Documents/guitar-tabber"
+
+# ---- launcher branch: spawn the sticky popup terminal (toggle to close) -----
+if [[ "$1" != "--run" ]]; then
+    if pgrep -f "kitty --class guitar-tab" >/dev/null 2>&1; then
+        pkill -f "kitty --class guitar-tab"
+        exit 0
+    fi
+    exec kitty --class guitar-tab -o font_size=12 -e "$(readlink -f "$0")" --run
+fi
+
+# ---- run branch: record -> engrave -> show -> open --------------------------
+UV="$(command -v uv || echo "$HOME/.local/bin/uv")"
+
+# A Line 6 HX Stomp enumerates as "Analog Surround 7.1" by default, and PipeWire
+# captures ZERO frames from that profile. Pro Audio is the only profile that actually
+# streams its input, so force it before recording.
+ensure_pro_audio() {
+    local card active
+    card=$(pactl list short cards | awk '/LINE_6|HX_Stomp/{print $2; exit}')
+    [[ -z "$card" ]] && return
+    active=$(pactl list cards | awk -v c="$card" '
+        $1=="Name:" && $2==c {f=1} f && /Active Profile:/{sub(/.*Active Profile: /,""); print; exit}')
+    if [[ "$active" != "pro-audio" ]]; then
+        pactl set-card-profile "$card" pro-audio 2>/dev/null && sleep 0.8
+    fi
+}
+
+# Prefer the USB audio interface's input (the DI); fall back to the default source.
+pick_source() {
+    [[ -n "$GUITAR_TAB_SOURCE" ]] && { echo "$GUITAR_TAB_SOURCE"; return; }
+    local usb
+    usb=$(pactl list short sources | cut -f2 | awk '/usb/ && !/\.monitor$/' | head -1)
+    [[ -n "$usb" ]] && { echo "$usb"; return; }
+    pactl get-default-source
+}
+
+wav=$(mktemp /tmp/guitar-tab-XXXXXX.wav)
+ts=$(date +%Y-%m-%d_%H-%M-%S)
+
+clear
+ensure_pro_audio
+src=$(pick_source)
+printf '\n  🎸  Recording from:\n      %s\n\n      Play your riff, then press [Enter] to transcribe.\n' "$src"
+
+# Capture in the background; Enter stops it (SIGTERM finalizes the WAV).
+parecord -d "$src" --file-format=wav "$wav" 2>/dev/null &
+rec_pid=$!
+read -r _
+kill "$rec_pid" 2>/dev/null
+wait "$rec_pid" 2>/dev/null
+
+printf '\n  ⏳  Transcribing and adding to your library (first run loads the model)...\n'
+# `add` transcribes, stores the piece (audio + score + sync), starts the library
+# server if needed, and opens the player in the browser at this piece.
+if ( cd "$GT_DIR" && "$UV" run guitar-tabber add "$wav" --title "riff $ts" ) \
+        >/tmp/guitar-tab.log 2>&1; then
+    clear
+    printf '\n  ✅  Added to your library and opened in the browser.\n'
+else
+    clear
+    printf '\n  ⚠  No tab produced (no notes detected, or an error).\n      Log: /tmp/guitar-tab.log\n'
+fi
+rm -f "$wav"
+printf '\n  [Enter to close]'
+read -r _

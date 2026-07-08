@@ -123,7 +123,7 @@ bindsym $mod+i exec --no-startup-id ~/.local/bin/vpn-toggle
 bindsym $mod+Shift+p exec --no-startup-id ~/.local/bin/picom-toggle
 
 # Audio stem separation (record system audio, then split into vocals/drums/bass/other)
-# bindsym $mod+Shift+s exec --no-startup-id ~/.local/bin/audio-stems-toggle
+bindsym $mod+Shift+s exec --no-startup-id ~/.local/bin/audio-stems-toggle
 
 # Real-time note/chord detector popup (taps default sink monitor)
 # bindsym $mod+Shift+e exec --no-startup-id ~/.local/bin/chord-detector-popup
@@ -141,11 +141,14 @@ bindsym $mod+Shift+u exec --no-startup-id ~/.local/bin/sdcard-toggle
 bindsym $mod+v exec --no-startup-id ~/.local/bin/voice-dictation
 bindsym $mod+Shift+v exec --no-startup-id ~/.local/bin/voice-dictation cancel
 
-# Standup recorder (toggle mic+system capture -> per-day transcript log)
-bindsym $mod+Shift+g exec --no-startup-id ~/.local/bin/standup-record
+# Guitar tab (record a riff -> engrave notation + tablature, open the score)
+bindsym $mod+Shift+g exec --no-startup-id ~/.local/bin/guitar-tab-popup
 
 # Black hole break reminder (Ghostty shader terminal, grows until the :55 break)
 bindsym $mod+Shift+h exec --no-startup-id ~/.local/bin/blackhole-toggle
+
+# Clipboard history + emoji popup (jkl;/5 pick last 5, e searches emojis)
+bindsym $mod+Ctrl+v exec --no-startup-id ~/.local/bin/clipboard-popup
 
 bindsym $mod+s exec --no-startup-id brave-browser --new-window "https://google.com/aimode"
 # bindsym $mod+shift+s workspace 6; exec --no-startup-id brave-browser --new-window "https://grok.com"; exec --no-startup-id "sleep 0.5 && i3-msg fullscreen enable"
@@ -157,6 +160,7 @@ bindsym $mod+a exec --no-startup-id ~/.local/bin/airpods-toggle
 exec --no-startup-id ~/.xsessionrc
 # exec --no-startup-id xcompmgr -C
 exec --no-startup-id feh --bg-scale ~/.config/new-machine-setup/jesus.jpg
+exec --no-startup-id greenclip daemon
 exec_always --no-startup-id $HOME/.config/polybar/launch.sh
 exec_always --no-startup-id "sleep 1 && ~/.local/bin/lid-suspend-sync"
 exec_always --no-startup-id "sleep 1 && ~/.local/bin/vpn-sync"
@@ -180,6 +184,15 @@ for_window [class="cava"] floating enable, resize set 600 300, move position cen
 
 # Chord/BPM/key analysis popup (floating, centered, sticky)
 for_window [class="chord-analyze"] floating enable, resize set 480 640, move position center, sticky enable
+
+# Guitar tab record/engrave popup (floating, centered, sticky)
+for_window [class="guitar-tab"] floating enable, resize set 560 260, move position center, sticky enable
+
+# Clipboard history + emoji popup (floating, centered, sticky, bordered)
+for_window [class="clipboard-popup"] floating enable, border pixel 4, resize set 920 620, move position center, sticky enable
+
+# mpv audio popup (floating, centered) — mimeapps default handler for audio files
+for_window [class="mpv"] floating enable, resize set 480 320, move position center
 # bindsym $mod+p exec --no-startup-id ~/.config/scripts/speedread-popup
 # bindsym $mod+Shift+p exec --no-startup-id kitty --class speedread -e ~/.config/scripts/speedread-clipboard
 

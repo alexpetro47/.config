@@ -3,9 +3,9 @@
 # Called on startup so icon reflects reality.
 
 if tailscale status 2>/dev/null | grep -q '; exit node;'; then
-    # VPN on (default) - no icon
-    polybar-msg action vpn hook 0 2>/dev/null
-else
-    # VPN off - warning icon
+    # VPN on - show icon
     polybar-msg action vpn hook 1 2>/dev/null
+else
+    # VPN off (default) - no icon
+    polybar-msg action vpn hook 0 2>/dev/null
 fi

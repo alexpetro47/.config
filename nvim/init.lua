@@ -104,6 +104,25 @@ vim.keymap.set('n', '<leader>I', function()
   local abs_path = vim.fn.getcwd() .. '/.media/' .. fname
   vim.api.nvim_put({'![](' .. abs_path .. ')'}, 'c', true, true)
 end, {desc = 'move clipboard image to .media/ and insert'})
+-- <leader>i: toggle inline image rendering (mermaid diagrams + PNGs via image.nvim, LaTeX via mdmath)
+vim.g.inline_images_on = true
+vim.keymap.set('n', '<leader>i', function()
+  vim.g.inline_images_on = not vim.g.inline_images_on
+  local on = vim.g.inline_images_on
+  -- image.nvim is the master switch: enable/disable is global and its per-image
+  -- render() bails on state.enabled, so diagram.nvim's re-renders stay suppressed
+  pcall(function() require('image')[on and 'enable' or 'disable']() end)
+  -- mdmath is per-buffer; apply to every loaded markdown buffer so it stays in sync
+  pcall(function()
+    local mdmath = require('mdmath')
+    for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+      if vim.api.nvim_buf_is_loaded(buf) and vim.bo[buf].filetype == 'markdown' then
+        mdmath[on and 'enable' or 'disable'](buf)
+      end
+    end
+  end)
+  vim.notify('inline images ' .. (on and 'on' or 'off'))
+end, { desc = 'toggle inline image rendering' })
 vim.keymap.set('n', '<leader>=', ':set shiftwidth=2<CR>', {noremap=true, silent=true, desc="reset shiftwidth 2"})
 vim.keymap.set('n', '<leader><', ':cd ..<CR>:pwd<CR>', {noremap=true, silent=true, desc="cd back 1 dir"})
 vim.keymap.set('n', '<leader>r', ':e!<CR>', {desc = 'reload buffer'})
@@ -911,6 +930,44 @@ require('lazy').setup({
     },
   },
 
+  -- Mermaid diagram rendering inline in markdown (requires Kitty graphics protocol + mmdc)
+  {
+    '3rd/diagram.nvim',
+    ft = 'markdown',
+    dependencies = {
+      {
+        '3rd/image.nvim',
+        build = false,
+        opts = {
+          processor = 'magick_cli',
+          -- clear/hide images on tmux pane, window, and session switches
+          tmux_show_only_in_active_window = true,
+          editor_only_render_when_focused = true,
+          window_overlap_clear_enabled = true,
+          kitty_tmux_write_delay = 10, -- more reliable rendering with Kitty+Tmux
+        },
+      },
+    },
+    opts = {
+      events = {
+        -- re-rendering shells out to Chromium (~1s); skip TextChanged so
+        -- typing in a file with diagrams doesn't re-render on every edit
+        render_buffer = { 'InsertLeave', 'BufWinEnter' },
+        clear_buffer = { 'BufLeave' },
+      },
+      renderer_options = {
+        mermaid = {
+          theme = 'dark',
+          background = 'transparent',
+          scale = 2,
+          -- sandboxed chromium fails to launch under this machine's AppArmor
+          -- userns restrictions; -p points mmdc at a puppeteer config with --no-sandbox
+          cli_args = { '-p', '/home/alexpetro/.config/nvim/mermaid-puppeteer.json' },
+        },
+      },
+    },
+  },
+
   -- -- Image rendering in terminal (requires Kitty terminal + ImageMagick)
   -- {
   --   "3rd/image.nvim",
@@ -977,11 +1034,51 @@ local function json_string_preview()
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(decoded, "\n", { plain = true }))
   vim.bo[buf].modifiable = false
 end
+-- JSON: toggle folding of the entry under the cursor. Multi-line objects/arrays
+-- use real treesitter folds; single-line string values (which can't span
+-- multiple lines) are collapsed by concealing their text behind an ellipsis.
+local json_collapse_ns = vim.api.nvim_create_namespace("json_collapse_string")
+local function json_toggle_fold()
+  local node = vim.treesitter.get_node()
+  local outer = node
+  while outer and outer:type() ~= "pair" and outer:type() ~= "object" and outer:type() ~= "array" do
+    outer = outer:parent()
+  end
+  if outer then
+    local srow, _, erow, _ = outer:range()
+    if srow ~= erow then return vim.cmd("normal! za") end
+  end
+
+  while node and node:type() ~= "string" do node = node:parent() end
+  if not node then return vim.notify("no JSON entry under cursor", vim.log.levels.WARN) end
+  local buf = vim.api.nvim_get_current_buf()
+  local srow, scol, erow, ecol = node:range()
+  local existing = vim.api.nvim_buf_get_extmarks(buf, json_collapse_ns, { srow, scol }, { erow, ecol }, {})
+  if #existing > 0 then
+    for _, mark in ipairs(existing) do vim.api.nvim_buf_del_extmark(buf, json_collapse_ns, mark[1]) end
+    return
+  end
+  vim.api.nvim_buf_set_extmark(buf, json_collapse_ns, srow, scol + 1, {
+    end_row = erow,
+    end_col = ecol - 1,
+    conceal = "",
+    virt_text = { { "…", "Comment" } },
+    virt_text_pos = "inline",
+  })
+end
+
 vim.api.nvim_create_autocmd("FileType", {
   pattern = "json",
   callback = function(args)
     vim.keymap.set("n", "<leader>jp", json_string_preview,
       { buffer = args.buf, desc = "preview JSON string as markdown" })
+
+    vim.wo.foldmethod = "expr"
+    vim.wo.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+    vim.wo.foldlevel = 99
+    vim.wo.conceallevel = 2
+    vim.wo.concealcursor = "nc"
+    vim.keymap.set("n", "<leader>f", json_toggle_fold, { buffer = args.buf, desc = "toggle JSON fold" })
   end,
 })
 

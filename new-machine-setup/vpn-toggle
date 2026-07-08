@@ -11,7 +11,7 @@ if tailscale status 2>/dev/null | grep -q '; exit node;'; then
         exit 1
     fi
     notify-send -u low "VPN" "Off - exposed on local IP"
-    polybar-msg action vpn hook 1 2>/dev/null
+    polybar-msg action vpn hook 0 2>/dev/null
 else
     # Not routing - turn on
     if ! out=$(tailscale set --exit-node="$EXIT_NODE_IP" --exit-node-allow-lan-access=true 2>&1); then
@@ -19,5 +19,5 @@ else
         exit 1
     fi
     notify-send -u low "VPN" "On - routing through droplet"
-    polybar-msg action vpn hook 0 2>/dev/null
+    polybar-msg action vpn hook 1 2>/dev/null
 fi

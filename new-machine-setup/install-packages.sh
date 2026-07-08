@@ -35,6 +35,7 @@ sudo apt install -y \
     nsxiv \
     fzf \
     ripgrep \
+    universal-ctags \
     btop \
     trash-cli \
     zathura zathura-pdf-poppler \
@@ -65,6 +66,7 @@ sudo apt install -y \
     libsox-fmt-all \
     pulseaudio-utils \
     cava \
+    mpv \
     libgtk-3-dev \
     dunst \
     tlp \
@@ -198,6 +200,7 @@ uv tool install pyright || true
 uv tool install pre-commit || true
 uv tool install whisper-ctranslate2 || true
 uv tool install llm || true
+uv tool install rofimoji || true   # emoji/symbol picker (rofi) for the clipboard popup
 llm install llm-openrouter 2>/dev/null || true
 uv tool install demucs --with torchcodec || true   # audio stem separation (vocals/drums/bass/other); torchcodec needed for torchaudio>=2.9 file writes
 
@@ -248,6 +251,8 @@ sudo apt install -y shellcheck
 
 # Go-based tools (shfmt)
 go install mvdan.cc/sh/v3/cmd/shfmt@latest || true
+# ctags-lsp: nvim symbol-search LSP (<leader>ss / <leader>sw). Needs universal-ctags (apt block above).
+go install github.com/netmute/ctags-lsp@latest || true
 
 # =============================================================================
 # RUST/CARGO
@@ -309,7 +314,7 @@ fi
 npm config set prefix ~/.local
 
 log "Installing npm global packages..."
-npm install -g markserv
+npm install -g markserv @mermaid-js/mermaid-cli
 
 # =============================================================================
 # BUN
@@ -547,6 +552,19 @@ if ! installed bw; then
     rm /tmp/bw.zip /tmp/bw
 else
     log "Bitwarden CLI already installed"
+fi
+
+# =============================================================================
+# GREENCLIP (clipboard-history daemon for the Alt+Ctrl+v clipboard popup)
+# =============================================================================
+if ! installed greenclip; then
+    log "Installing greenclip..."
+    mkdir -p "$HOME/.local/bin"
+    GREENCLIP_URL=$(curl -s "https://api.github.com/repos/erebe/greenclip/releases/latest" | grep -Po '"browser_download_url": *"\K[^"]*/greenclip(?=")' | head -1)
+    curl -fLo "$HOME/.local/bin/greenclip" "$GREENCLIP_URL"
+    chmod +x "$HOME/.local/bin/greenclip"
+else
+    log "greenclip already installed"
 fi
 
 # =============================================================================
