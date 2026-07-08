@@ -151,6 +151,10 @@ picom/*
 cava/*
 !cava/config
 
+!dunst
+dunst/*
+!dunst/dunstrc
+
 !btop
 btop/*
 !btop/btop.conf
