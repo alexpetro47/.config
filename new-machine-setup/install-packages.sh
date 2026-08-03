@@ -45,6 +45,7 @@ sudo apt install -y \
     cbonsai \
     xclip \
     xdotool \
+    gromit-mpx \
     slop \
     zenity \
     inotify-tools \

@@ -145,7 +145,10 @@ bindsym $mod+Shift+v exec --no-startup-id ~/.local/bin/voice-dictation cancel
 bindsym $mod+Shift+g exec --no-startup-id ~/.local/bin/guitar-tab-popup
 
 # Black hole break reminder (Ghostty shader terminal, grows until the :55 break)
-bindsym $mod+Shift+h exec --no-startup-id ~/.local/bin/blackhole-toggle
+# bindsym $mod+Shift+h exec --no-startup-id ~/.local/bin/blackhole-toggle
+
+# Screen highlighter (draw over the screen with a green marker; right-click erases)
+bindsym $mod+Shift+h exec --no-startup-id ~/.local/bin/highlighter-toggle
 
 # Clipboard history + emoji popup (jkl;/5 pick last 5, e searches emojis)
 bindsym $mod+Ctrl+v exec --no-startup-id ~/.local/bin/clipboard-popup

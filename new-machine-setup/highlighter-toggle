@@ -1,0 +1,12 @@
+#!/bin/bash
+# highlighter-toggle - Draw over the screen with a green marker (gromit-mpx)
+# First press: painting mode on (mouse draws, right-click erases).
+# Second press: clear all drawings and exit.
+
+if pgrep -x gromit-mpx >/dev/null; then
+    gromit-mpx --quit
+    notify-send -u low "Highlighter" "OFF"
+else
+    gromit-mpx --active --key "" --undo-key "" &
+    notify-send -u low "Highlighter" "ON - draw with mouse, right-click erases"
+fi

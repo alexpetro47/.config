@@ -222,6 +222,7 @@ new-machine-setup/*
 !new-machine-setup/sprite-toggle
 !new-machine-setup/blackhole-toggle
 !new-machine-setup/clipboard-popup
+!new-machine-setup/highlighter-toggle
 
 # Ghostty (only used for the black hole break-reminder shader)
 !ghostty/
@@ -254,6 +255,9 @@ gtk-3.0/*
 !gtk-3.0/settings.ini
 
 !mimeapps.list
+
+# Screen highlighter (gromit-mpx reads ~/.config/gromit-mpx.cfg; .ini is runtime state)
+!gromit-mpx.cfg
 
 !lazygit/
 lazygit/*

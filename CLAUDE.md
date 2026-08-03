@@ -48,7 +48,7 @@ Scripts are designed for safe re-runs:
 | `Alt+Shift+x` | Capture stream → BPM/key/chord-progression/structure report popup (saved to ~/Music/analysis, opens Thunar) |
 | `Alt+Shift+g` | Guitar tab popup (record a riff off the interface → guitar-tabber transcribes it into your library and opens the local web player showing notation + tab with a cursor that follows the recorded audio; Enter stops recording, keybind again to cancel) |
 | `Alt+p` | Toggle desktop sprite (animated Ryu wanders/idles/attacks/somersaults plus tatsu, shoryuken, hadouken, taunt, dash, moonwalk on screen edges; superhero landing when dropped from height; drag to any edge, double-click to attack, right-click to close) |
-| `Alt+Shift+h` | Toggle black hole break reminder (Ghostty terminal with shader: hole drifts and lenses text, grows until the :55-:00 break each hour, fades when idle) |
+| `Alt+Shift+h` | Toggle screen highlighter (draw over the screen with a thick green marker via gromit-mpx; right-click erases, toggle again clears and exits) |
 | `Alt+Ctrl+v` | Clipboard history + emoji popup (lists the last 10 clipboard entries via greenclip in a bordered table; press j/k/l/;/'/n/m/,/./ to pick a row newest-first, e to search all emojis via rofimoji; the pick auto-pastes into the window you came from - Ctrl+Shift+V into terminals, Ctrl+V elsewhere; keybind again to dismiss) |
 
 ## Theme

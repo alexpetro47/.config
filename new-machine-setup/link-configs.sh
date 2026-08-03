@@ -216,6 +216,11 @@ if [ -f "$CONFIG_DIR/new-machine-setup/clipboard-popup" ]; then
     _link_config "$CONFIG_DIR/new-machine-setup/clipboard-popup" "$HOME/.local/bin/clipboard-popup"
 fi
 
+# Screen highlighter toggle (gromit-mpx green marker)
+if [ -f "$CONFIG_DIR/new-machine-setup/highlighter-toggle" ]; then
+    _link_config "$CONFIG_DIR/new-machine-setup/highlighter-toggle" "$HOME/.local/bin/highlighter-toggle"
+fi
+
 
 # =============================================================================
 # DESKTOP ENTRIES
