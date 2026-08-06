@@ -229,7 +229,7 @@ vim.keymap.set('n', '<leader>Se', ':vs<CR><C-w>40< :DistantOpen<CR>' , { desc = 
 vim.keymap.set('n', '<leader>St', ':vs<CR><C-w>l :DistantShell<CR>a' , { desc = 'Distant Term' })
 
 --file conversions
-vim.keymap.set('n', '<leader>c9', ':!pandoc % -o %:r.pdf -d /home/alexpetro/.config/pandoc/defaults.yaml<CR>:! xdg-open %:r.pdf &<CR>', { desc = 'md -> pdf' })
+vim.keymap.set('n', '<leader>c9', ':!/home/alexpetro/.local/bin/md2pdf %:p<CR>:! xdg-open %:r.pdf &<CR>', { desc = 'md -> pdf (mermaid via mmdc)' })
 vim.keymap.set('n', '<leader>c8', ":!markmap % --offline <CR>", {desc = 'md -> mind-map (html)'})
 vim.keymap.set('n', '<leader>c7', ':silent !markserv % > /dev/null 2>&1 &<CR>', { desc = 'md -> browser live preview' })
 

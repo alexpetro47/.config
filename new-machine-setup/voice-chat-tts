@@ -1,0 +1,41 @@
+#!/bin/bash
+# voice-chat-tts - read one sentence per stdin line, speak it with the selected
+# engine, in order, to the default sink. Shared by voice-chat's reply pipeline
+# and its `say` audition command.
+#
+# Engine via VC_TTS:  kokoro | xtts | espeak | auto (default)
+#   auto = kokoro if its model is installed, else espeak.
+# Speaking indicator: the espeak branch flips the polybar module to 'speaking'
+# on the first line when VC_SIGNAL_SPEAKING=1; the kokoro/xtts backends do the
+# same internally.
+set -u
+
+KOKORO_HOME="${KOKORO_HOME:-$HOME/.local/share/kokoro}"
+engine="${VC_TTS:-auto}"
+
+if [ "$engine" = "auto" ]; then
+    if [ -f "$KOKORO_HOME/kokoro-v1.0.onnx" ] && command -v voice-chat-speak-kokoro >/dev/null; then
+        engine=kokoro
+    else
+        engine=espeak
+    fi
+fi
+
+case "$engine" in
+    kokoro) exec voice-chat-speak-kokoro ;;
+    xtts)   exec voice-chat-speak-xtts ;;
+    espeak)
+        module="${VC_POLY:-voice-chat}"
+        signal="${VC_SIGNAL_SPEAKING:-0}"
+        first=1
+        while IFS= read -r s; do
+            [ -z "${s// }" ] && continue
+            if [ "$first" = 1 ]; then
+                [ "$signal" = 1 ] && polybar-msg action "$module" hook 3 2>/dev/null
+                first=0
+            fi
+            espeak-ng -s 160 -p 35 --stdout "$s" 2>/dev/null | paplay 2>/dev/null
+        done
+        ;;
+    *) echo "voice-chat-tts: unknown VC_TTS engine '$engine'" >&2; exit 1 ;;
+esac

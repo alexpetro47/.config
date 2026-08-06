@@ -1,0 +1,103 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = []
+# ///
+"""
+voice-chat-parse - turn a headless `claude -p --output-format stream-json` stream
+into one finalized sentence per line, for streaming TTS.
+
+stdin : NDJSON events from `claude -p ... --include-partial-messages`
+stdout: one spoken-ready sentence per line, flushed as soon as it completes
+
+Side effects (via $VC_STATE dir):
+  session        <- session_id, for --resume on the next turn (conversation memory)
+  last-reply.txt <- full assistant text, for an optional transcript popup
+
+Only content_block_delta/text_delta is spoken. thinking_delta / signature_delta
+(extended thinking) are ignored on purpose.
+"""
+import sys, os, json, re
+
+STATE = os.environ.get("VC_STATE", "/tmp/voice-chat")
+os.makedirs(STATE, exist_ok=True)
+SESSION_FILE = os.path.join(STATE, "session")
+TRANSCRIPT = os.path.join(STATE, "last-reply.txt")
+
+# A sentence ends at .!?… (plus any closing quote/bracket) followed by whitespace.
+SENT = re.compile(r'^(.*?[.!?…]+["\')\]]*)(\s+)(.*)$', re.S)
+MAX_CHUNK = 240  # bound latency: flush an over-long clause even without punctuation
+
+buf = ""
+full = []
+session_id = None
+got_text = False
+
+
+def clean(s):
+    s = re.sub(r'```.*?```', '', s, flags=re.S)   # drop code fences
+    s = re.sub(r'[*_`#>|]+', '', s)                # strip common markdown
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s
+
+
+def emit(s):
+    s = clean(s)
+    if s:
+        sys.stdout.write(s + "\n")
+        sys.stdout.flush()
+
+
+def flush(final=False):
+    global buf
+    while True:
+        m = SENT.match(buf)
+        if not m:
+            break
+        emit(m.group(1))
+        buf = m.group(3)
+    if not final and len(buf) > MAX_CHUNK:
+        cut = buf.rfind(' ', 0, MAX_CHUNK)
+        if cut > 40:
+            emit(buf[:cut])
+            buf = buf[cut + 1:]
+    if final and buf.strip():
+        emit(buf)
+        buf = ""
+
+
+for line in sys.stdin:
+    line = line.strip()
+    if not line:
+        continue
+    try:
+        obj = json.loads(line)
+    except json.JSONDecodeError:
+        continue
+    sid = obj.get("session_id")
+    if sid:
+        session_id = sid
+    if obj.get("type") == "stream_event":
+        ev = obj.get("event", {})
+        if ev.get("type") == "content_block_delta":
+            d = ev.get("delta", {})
+            if d.get("type") == "text_delta":
+                txt = d.get("text", "")
+                buf += txt
+                full.append(txt)
+                got_text = True
+                flush()
+    elif obj.get("type") == "result":
+        if not got_text:  # fallback: no partial deltas arrived, speak whole result
+            r = obj.get("result", "")
+            if isinstance(r, str) and r.strip():
+                buf += r
+                full.append(r)
+
+flush(final=True)
+
+if session_id:
+    with open(SESSION_FILE, "w") as f:
+        f.write(session_id)
+with open(TRANSCRIPT, "w") as f:
+    f.write("".join(full).strip())

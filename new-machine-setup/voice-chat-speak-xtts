@@ -1,0 +1,60 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10,<3.15"
+# dependencies = ["coqui-tts", "soundfile"]
+# ///
+"""
+voice-chat-speak-xtts - speak one sentence per stdin line with Coqui XTTS-v2.
+
+Highest quality of the built-in engines, but heavy and CPU-only here, so the
+first audio lags while torch + the ~1.8GB model load. The model is loaded ONCE
+for the whole reply, then each sentence is synthesized and played in order.
+
+Env:
+  VC_XTTS_SPEAKER   built-in studio speaker (default "Ana Florence")
+  VC_SPEAKER_WAV    path to a reference clip to voice-clone instead of a speaker
+  VC_SPEED          playback speed (default 1.3)
+  VC_POLY           polybar module name (default voice-chat)
+  VC_SIGNAL_SPEAKING  "1" to flip the polybar module to 'speaking' on line 1
+"""
+import sys, os, subprocess, tempfile
+
+os.environ.setdefault("COQUI_TOS_AGREED", "1")   # non-interactive model license
+os.environ.setdefault("TTS_HOME", os.path.expanduser("~/.local/share/tts"))
+from TTS.api import TTS
+
+speaker = os.environ.get("VC_XTTS_SPEAKER", "Ana Florence")
+speaker_wav = os.environ.get("VC_SPEAKER_WAV") or None
+speed = float(os.environ.get("VC_SPEED", "1.3"))
+module = os.environ.get("VC_POLY", "voice-chat")
+signal = os.environ.get("VC_SIGNAL_SPEAKING") == "1"
+
+tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to("cpu")
+
+
+def synth(text, path):
+    kw = dict(text=text, language="en", file_path=path)
+    kw["speaker_wav" if speaker_wav else "speaker"] = speaker_wav or speaker
+    try:
+        tts.tts_to_file(**kw, speed=speed)
+    except TypeError:                    # older builds without a speed arg
+        tts.tts_to_file(**kw)
+
+
+first = True
+for line in sys.stdin:
+    text = line.strip()
+    if not text:
+        continue
+    if first:
+        if signal:
+            subprocess.run(["polybar-msg", "action", module, "hook", "3"],
+                           stderr=subprocess.DEVNULL, check=False)
+        first = False
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+        tmp = f.name
+    try:
+        synth(text, tmp)
+        subprocess.run(["paplay", tmp], check=False)
+    finally:
+        os.unlink(tmp)

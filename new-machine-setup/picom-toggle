@@ -1,19 +1,5 @@
 #!/bin/bash
 # picom-toggle - Start or kill the picom compositor
-# "picom-toggle sync" resyncs the polybar indicator without toggling
-
-_sync() {
-    if pgrep -x picom >/dev/null; then
-        polybar-msg action picom hook 0 2>/dev/null
-    else
-        polybar-msg action picom hook 1 2>/dev/null
-    fi
-}
-
-if [[ "$1" == "sync" ]]; then
-    _sync
-    exit 0
-fi
 
 if pgrep -x picom >/dev/null; then
     pkill -x picom
@@ -22,5 +8,3 @@ else
     picom --daemon
     notify-send -u low "Picom" "Compositor ON"
 fi
-sleep 0.2
-_sync

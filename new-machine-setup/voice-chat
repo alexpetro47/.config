@@ -1,0 +1,231 @@
+#!/bin/bash
+# voice-chat - hands-free spoken conversation with a Claude agent.
+#
+# A "call" is engaged with $mod+j (or the polybar icon) and runs until you hang
+# up with the same key. There are no per-turn keypresses: voice-chat-listen
+# watches the mic with Silero VAD and ends your turn on ~700ms of silence, so you
+# just talk. The agent's reply is streamed sentence-by-sentence to TTS and spoken
+# to your default sink; the mic is off while it talks (no echo). The conversation
+# is remembered across turns via the Agent SDK session (--resume), and reset on
+# each new call.
+#
+# Actions:
+#   call    - toggle a call on/off (engage: fresh conversation + start listening)
+#   start   - engage a call
+#   stop    - hang up (also interrupts an in-flight reply)
+#   hangup  - hang up if engaged, else passthrough to Spotify next-track, so the
+#             AirPod double-press still works as a media key outside a call
+#   sync    - resync the polybar indicator to the current state (for launch.sh)
+#   status  - print engaged/state/session
+#   _loop   - internal: the turn loop, re-exec'd into its own process group
+#
+# Pipeline:  VAD -> Groq Whisper -> claude -p (stream-json) | voice-chat-parse | TTS
+# STT: Groq Whisper (same key/cache as voice-dictation). Capture: voice-chat-listen.
+
+set -u
+
+# --- config -----------------------------------------------------------------
+# Optional overrides live in ~/.config/voice-chat/config (VC_* vars). It uses
+# := assignments so an env var set on the command line still wins over the file.
+[ -f "$HOME/.config/voice-chat/config" ] && . "$HOME/.config/voice-chat/config"
+
+: "${VC_MODEL:=claude-opus-4-8}"
+: "${VC_STT_MODEL:=whisper-large-v3-turbo}"
+: "${VC_TTS:=auto}"                 # kokoro | xtts | espeak | auto
+: "${VC_VOICE:=af_heart}"           # Kokoro voice
+: "${VC_SPEED:=1.3}"                # playback speed (Kokoro/XTTS)
+: "${VC_XTTS_SPEAKER:=Ana Florence}"
+
+# Turn detection. Silence is how long you can pause *mid-thought* before the turn
+# is cut — the single knob most worth tuning to your speaking rhythm. 700ms is
+# fine for clipped answers and far too eager if you think out loud.
+: "${VC_VAD_SILENCE_MS:=2500}"
+: "${VC_VAD_THRESHOLD:=0.5}"
+: "${VC_VAD_ONSET_MS:=160}"
+: "${VC_VAD_MIN_MS:=350}"
+: "${VC_VAD_PREROLL_MS:=300}"
+: "${VC_VAD_MAX_S:=60}"
+
+POLY="voice-chat"                                   # polybar module name
+KOKORO_HOME="${KOKORO_HOME:-$HOME/.local/share/kokoro}"
+export VC_MODEL VC_STT_MODEL VC_TTS VC_VOICE VC_SPEED VC_XTTS_SPEAKER KOKORO_HOME
+# Must be exported: voice-chat-listen is a separate process and reads these from
+# the environment, not from the sourced config.
+export VC_VAD_SILENCE_MS VC_VAD_THRESHOLD VC_VAD_ONSET_MS VC_VAD_MIN_MS \
+       VC_VAD_PREROLL_MS VC_VAD_MAX_S
+export VC_POLY="$POLY"
+
+MODEL="$VC_MODEL"
+STT_MODEL="$VC_STT_MODEL"
+AGENT_DIR="$HOME/.local/share/voice-chat-agent"     # stable cwd so --resume resolves
+PERSONA="You are a warm, friendly voice assistant on a live spoken phone call with the user. Keep replies short and conversational, usually one to three sentences. Speak plainly: no markdown, no bullet points, no code blocks, no emoji, no stage directions. Use natural spoken phrasing and contractions. If something needs a long answer, give the short version first and offer to go deeper. Never describe formatting or mention that you are a text model."
+
+STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}/voice-chat"
+ENGAGED="$STATE_DIR/engaged"
+STATE_FILE="$STATE_DIR/state"
+SESSION_FILE="$STATE_DIR/session"
+TURN_WAV="$STATE_DIR/turn.wav"
+LOOP_PID_FILE="$STATE_DIR/loop.pid"
+BRAIN_PID_FILE="$STATE_DIR/brain.pid"
+
+# Resolved so the turn loop can re-exec us into its own process group.
+SELF="$(readlink -f "$0")"
+
+mkdir -p "$STATE_DIR" "$AGENT_DIR"
+
+# --- helpers ----------------------------------------------------------------
+notify() { notify-send -u low -i audio-input-microphone "Voice chat" "$1" 2>/dev/null; }
+
+set_state() {
+    echo "$1" > "$STATE_FILE"
+    case "$1" in
+        idle)      polybar-msg action "$POLY" hook 0 2>/dev/null || true ;;
+        listening) polybar-msg action "$POLY" hook 1 2>/dev/null || true ;;
+        thinking)  polybar-msg action "$POLY" hook 2 2>/dev/null || true ;;
+        speaking)  polybar-msg action "$POLY" hook 3 2>/dev/null || true ;;
+    esac
+}
+
+get_groq_api_key() {
+    local cache="${XDG_RUNTIME_DIR:-/tmp}/groq-api-key" ttl=3600 key age
+    if [ -f "$cache" ]; then
+        age=$(( $(date +%s) - $(stat -c %Y "$cache" 2>/dev/null || echo 0) ))
+        [ "$age" -lt "$ttl" ] && { cat "$cache"; return 0; }
+    fi
+    if [ -n "${BWS_ACCESS_TOKEN:-}" ]; then
+        key=$(bws secret list 2>/dev/null | jq -r '.[] | select(.key == "GROQ_API_KEY") | .value' 2>/dev/null)
+        [ -n "$key" ] && { echo "$key" > "$cache"; chmod 600 "$cache"; echo "$key"; return 0; }
+    fi
+    [ -f "$cache" ] && { cat "$cache"; return 0; }   # stale but better than nothing
+    return 1
+}
+
+# Block until the user finishes an utterance; echo the WAV path (empty if the
+# listener bailed or caught only noise). Blocks indefinitely by design — a hang-up
+# kills this process group, which takes the listener with it.
+listen_for_turn() {
+    PULSE_PROP="media.role=Communication" \
+        voice-chat-listen --out "$TURN_WAV" 2>/dev/null || echo ""
+}
+
+transcribe() {
+    local wav="$1" key resp text
+    key=$(get_groq_api_key) || return 1
+    [ -n "$key" ] || return 1
+    resp=$(curl -s --max-time 120 -X POST "https://api.groq.com/openai/v1/audio/transcriptions" \
+        -H "Authorization: Bearer $key" -H "Content-Type: multipart/form-data" \
+        -F "model=$STT_MODEL" -F "file=@$wav" -F "response_format=json" -F "language=en" 2>/dev/null)
+    echo "$resp" | jq -r '.text // empty' 2>/dev/null | tr '\n' ' ' | sed 's/  */ /g; s/^ *//; s/ *$//'
+}
+
+# Stream the agent reply and speak it. Runs the pipeline in its own session so
+# a hang-up can kill the whole group mid-reply. Blocks until the reply is spoken.
+run_brain() {
+    set_state thinking
+    local resume=""
+    [ -s "$SESSION_FILE" ] && resume="$(cat "$SESSION_FILE")"
+    VC_TEXT="$1" VC_RESUME="$resume" VC_PERSONA="$PERSONA" \
+    VC_STATE="$STATE_DIR" VC_AGENT_DIR="$AGENT_DIR" VC_SIGNAL_SPEAKING=1 \
+    setsid bash -c '
+        cd "$VC_AGENT_DIR" || exit 1
+        args=(--output-format stream-json --verbose --include-partial-messages
+              --model "$VC_MODEL" --append-system-prompt "$VC_PERSONA")
+        [ -n "$VC_RESUME" ] && args+=(--resume "$VC_RESUME")
+        claude -p "$VC_TEXT" "${args[@]}" 2>/dev/null \
+          | voice-chat-parse \
+          | voice-chat-tts
+    ' &
+    local bpid=$!
+    echo "$bpid" > "$BRAIN_PID_FILE"
+    wait "$bpid" 2>/dev/null
+    rm -f "$BRAIN_PID_FILE"
+}
+
+# listen -> transcribe -> reply, until hung up. Runs as its own process group so
+# disengage can kill it (and whatever it is blocked on) in one signal.
+turn_loop() {
+    while [ -f "$ENGAGED" ]; do
+        set_state listening
+        local wav text
+        wav=$(listen_for_turn)
+        [ -f "$ENGAGED" ] || break
+        [ -n "$wav" ] || continue          # too short to be speech; keep listening
+
+        set_state thinking
+        text=$(transcribe "$wav")
+        [ -f "$ENGAGED" ] || break
+        if [ -z "$text" ]; then notify "Didn't catch that"; continue; fi
+
+        notify "You: $text"
+        run_brain "$text"
+    done
+    set_state idle
+}
+
+# --- actions ----------------------------------------------------------------
+engage() {
+    rm -f "$SESSION_FILE"          # each call is a fresh conversation
+    : > "$ENGAGED"
+    notify "Call started — just talk"
+    set_state listening
+    setsid "$SELF" _loop >/dev/null 2>&1 &
+    echo $! > "$LOOP_PID_FILE"
+}
+
+disengage() {
+    rm -f "$ENGAGED"
+    # Kill the loop's group first (takes the listener with it), then any in-flight
+    # reply, so hanging up mid-sentence actually stops the audio.
+    local f pid
+    for f in "$LOOP_PID_FILE" "$BRAIN_PID_FILE"; do
+        [ -f "$f" ] || continue
+        pid=$(cat "$f"); rm -f "$f"
+        kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null
+    done
+    set_state idle
+    notify "Call ended"
+}
+
+# AirPod double-press: hang up while on a call, else pass through to Spotify.
+hangup_or_next() {
+    if [ -f "$ENGAGED" ]; then
+        disengage
+    else
+        playerctl -p spotify next 2>/dev/null || playerctl next 2>/dev/null || true
+    fi
+}
+
+sync() {
+    local st; st=$(cat "$STATE_FILE" 2>/dev/null || echo idle)
+    [ -f "$ENGAGED" ] || st=idle
+    set_state "$st"
+}
+
+status() {
+    echo "engaged: $([ -f "$ENGAGED" ] && echo yes || echo no)"
+    echo "state:   $(cat "$STATE_FILE" 2>/dev/null || echo idle)"
+    echo "session: $(cat "$SESSION_FILE" 2>/dev/null || echo '(fresh)')"
+    echo "engine:  $VC_TTS   voice: $VC_VOICE   speed: $VC_SPEED"
+}
+
+# Audition the current engine outside a call, e.g. to A/B voices:
+#   voice-chat say "hello there"           (configured engine)
+#   VC_TTS=xtts voice-chat say "hello"     (force XTTS for this run)
+say() {
+    local text="$*"
+    [ -n "$text" ] || { echo "usage: voice-chat say <text>" >&2; return 1; }
+    printf '%s\n' "$text" | VC_SIGNAL_SPEAKING=0 voice-chat-tts
+}
+
+# --- main -------------------------------------------------------------------
+case "${1:-}" in
+    call|toggle)          [ -f "$ENGAGED" ] && disengage || engage ;;
+    start|engage)         engage ;;
+    stop|disengage)       disengage ;;
+    hangup|send|playpause) hangup_or_next ;;
+    say)                  shift; say "$@" ;;
+    sync)                 sync ;;
+    status)               status ;;
+    _loop)                turn_loop ;;
+    *) echo "usage: voice-chat {call|start|stop|hangup|say|sync|status}" >&2; exit 1 ;;
+esac

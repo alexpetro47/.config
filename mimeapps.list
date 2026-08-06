@@ -33,6 +33,6 @@ audio/x-wavpack=mpv-audio.desktop
 [Added Associations]
 application/pdf=libreoffice-draw.desktop;org.pwmt.zathura-pdf-poppler.desktop;
 image/jpeg=gimp.desktop;
-video/mp4=com.brave.Browser.desktop;
+video/mp4=mpv.desktop;com.brave.Browser.desktop;
 image/heif=okularApplication_kimgio.desktop;
 image/png=org.gnome.gThumb.desktop;org.gnome.eog.desktop;gimp.desktop;display-im6.q16.desktop;feh.desktop;

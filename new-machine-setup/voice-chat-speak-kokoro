@@ -1,0 +1,46 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["kokoro-onnx", "soundfile", "numpy"]
+# ///
+"""
+voice-chat-speak-kokoro - speak one sentence per stdin line with Kokoro.
+
+The model is loaded ONCE for the whole reply (not per sentence), then each
+incoming sentence line is synthesized and played to the default sink in order.
+Flips the polybar module to 'speaking' (hook 3) on the first spoken line.
+
+Env: KOKORO_HOME (model dir), VC_VOICE (default af_heart), VC_SPEED (default 1.1),
+     VC_POLY (polybar module name, default voice-chat).
+"""
+import sys, os, subprocess, tempfile
+import soundfile as sf
+from kokoro_onnx import Kokoro
+
+home = os.environ.get("KOKORO_HOME", os.path.expanduser("~/.local/share/kokoro"))
+voice = os.environ.get("VC_VOICE", "af_heart")
+speed = float(os.environ.get("VC_SPEED", "1.3"))
+module = os.environ.get("VC_POLY", "voice-chat")
+signal = os.environ.get("VC_SIGNAL_SPEAKING") == "1"
+
+kok = Kokoro(os.path.join(home, "kokoro-v1.0.onnx"),
+             os.path.join(home, "voices-v1.0.bin"))
+
+first = True
+for line in sys.stdin:
+    text = line.strip()
+    if not text:
+        continue
+    if first:
+        if signal:
+            subprocess.run(["polybar-msg", "action", module, "hook", "3"],
+                           stderr=subprocess.DEVNULL, check=False)
+        first = False
+    samples, sr = kok.create(text, voice=voice, speed=speed, lang="en-us")
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+        tmp = f.name
+    sf.write(tmp, samples, sr)
+    try:
+        subprocess.run(["paplay", tmp], check=False)
+    finally:
+        os.unlink(tmp)

@@ -35,7 +35,9 @@ bindsym XF86MonBrightnessDown exec --no-startup-id brightnessctl set 25%-
 #############################################
 
 bindsym XF86AudioPlay exec playerctl -p spotify play-pause
-bindsym XF86AudioNext exec playerctl -p spotify next
+# AirPod double-press hangs up a voice-chat call while one is engaged;
+# otherwise it falls through to Spotify next-track (unchanged behavior).
+bindsym XF86AudioNext exec --no-startup-id ~/.local/bin/voice-chat hangup
 bindsym XF86AudioPrev exec playerctl -p spotify previous
 
 # Tinty-managed colors (tinty apply <scheme>)
@@ -82,7 +84,7 @@ bindsym --whole-window button2 kill
 bindsym $mod+ctrl+f floating toggle, border pixel 4, resize set 800 950, move position center
 
 bindsym $mod+c exec --no-startup-id ~/.local/bin/screenshot
-bindsym $mod+t exec --no-startup-id telegram
+# bindsym $mod+t exec --no-startup-id telegram
 bindsym $mod+f exec --no-startup-id rofi -show drun
 bindsym $mod+r exec --no-startup-id reaper
 bindsym $mod+h exec --no-startup-id google-chrome --remote-debugging-port=9222
@@ -90,13 +92,13 @@ bindsym $mod+m exec --no-startup-id spotify
 bindsym $mod+e exec --no-startup-id thunar ~/Downloads
 bindsym $mod+shift+d exec --no-startup-id brave-browser --app=https://excalidraw.com
 bindsym $mod+shift+c exec --no-startup-id brave-browser --app=https://claude.com
-# bindsym $mod+shift+g exec --no-startup-id brave-browser --app=https://gemini.google.com
+bindsym $mod+shift+g exec --no-startup-id brave-browser --app=https://gemini.google.com
 bindsym $mod+g exec --no-startup-id brave-browser --app=https://gmail.com
 # bindsym $mod+n exec --no-startup-id brave-browser --app=https://app.simplenote.com
 bindsym $mod+b exec --no-startup-id brave-browser
-bindsym $mod+shift+t exec --no-startup-id google-chrome --app=https://teams.microsoft.com
+bindsym $mod+t exec --no-startup-id google-chrome --app=https://teams.microsoft.com
 # bindsym $mod+o exec --no-startup-id /snap/bin/obsidian
-bindsym $mod+shift+o exec --no-startup-id brave-browser --app=https://alexpetro-um890pro.tail1c3769.ts.net/chat
+# bindsym $mod+shift+o exec --no-startup-id brave-browser --app=https://alexpetro-um890pro.tail1c3769.ts.net/chat
 # bindsym $mod+b exec --no-startup-id brave-browser --remote-debugging-port=9222
 
 
@@ -108,13 +110,13 @@ bindsym $mod+shift+o exec --no-startup-id brave-browser --app=https://alexpetro-
 # bindsym $mod+ctrl+t exec --no-startup-id ~/.local/bin/toggle-theme
 
 # Focus mode (disable notifications)
-bindsym $mod+Shift+n exec --no-startup-id ~/.local/bin/focus-toggle
+# bindsym $mod+Shift+n exec --no-startup-id ~/.local/bin/focus-toggle
 
 # Screen recording toggle (ffmpeg)
-bindsym Mod4+control+v exec --no-startup-id ~/.config/new-machine-setup/screen-record-toggle
+# bindsym Mod4+control+v exec --no-startup-id ~/.config/new-machine-setup/screen-record-toggle
 
 # Lid suspend toggle (keep laptop awake when closed)
-bindsym $mod+Shift+a exec --no-startup-id ~/.local/bin/lid-suspend-toggle
+bindsym $mod+l exec --no-startup-id ~/.local/bin/lid-suspend-toggle
 
 # VPN toggle (Tailscale exit node - DigitalOcean droplet)
 bindsym $mod+i exec --no-startup-id ~/.local/bin/vpn-toggle
@@ -123,7 +125,7 @@ bindsym $mod+i exec --no-startup-id ~/.local/bin/vpn-toggle
 bindsym $mod+Shift+p exec --no-startup-id ~/.local/bin/picom-toggle
 
 # Audio stem separation (record system audio, then split into vocals/drums/bass/other)
-bindsym $mod+Shift+s exec --no-startup-id ~/.local/bin/audio-stems-toggle
+# bindsym $mod+Shift+s exec --no-startup-id ~/.local/bin/audio-stems-toggle
 
 # Real-time note/chord detector popup (taps default sink monitor)
 # bindsym $mod+Shift+e exec --no-startup-id ~/.local/bin/chord-detector-popup
@@ -132,7 +134,7 @@ bindsym $mod+Shift+s exec --no-startup-id ~/.local/bin/audio-stems-toggle
 # bindsym $mod+Shift+m exec --no-startup-id ~/.local/bin/cava-popup
 
 # SD card mount/eject toggle (notifies injected/ejected status)
-bindsym $mod+Shift+u exec --no-startup-id ~/.local/bin/sdcard-toggle
+# bindsym $mod+Shift+u exec --no-startup-id ~/.local/bin/sdcard-toggle
 
 # Capture stream -> BPM/key/chord-progression/structure report popup
 # bindsym $mod+Shift+x exec --no-startup-id ~/.local/bin/chord-analyze-popup
@@ -141,8 +143,13 @@ bindsym $mod+Shift+u exec --no-startup-id ~/.local/bin/sdcard-toggle
 bindsym $mod+v exec --no-startup-id ~/.local/bin/voice-dictation
 bindsym $mod+Shift+v exec --no-startup-id ~/.local/bin/voice-dictation cancel
 
+# Voice chat — hands-free spoken conversation with a Claude agent (Kokoro TTS)
+# Alt+j starts the call and hangs it up. No per-turn keypress: Silero VAD ends
+# your turn on ~700ms of silence, so you just talk.
+bindsym $mod+j exec --no-startup-id ~/.local/bin/voice-chat call
+
 # Guitar tab (record a riff -> engrave notation + tablature, open the score)
-bindsym $mod+Shift+g exec --no-startup-id ~/.local/bin/guitar-tab-popup
+# bindsym $mod+Shift+g exec --no-startup-id ~/.local/bin/guitar-tab-popup
 
 # Black hole break reminder (Ghostty shader terminal, grows until the :55 break)
 # bindsym $mod+Shift+h exec --no-startup-id ~/.local/bin/blackhole-toggle
@@ -162,7 +169,7 @@ bindsym $mod+a exec --no-startup-id ~/.local/bin/airpods-toggle
 
 exec --no-startup-id ~/.xsessionrc
 # exec --no-startup-id xcompmgr -C
-exec --no-startup-id feh --bg-scale ~/.config/new-machine-setup/jesus.jpg
+exec --no-startup-id feh --bg-fill ~/.config/assets/wallpapers/kristaps-ungurs-nE6sgEw2FjY-unsplash.jpg
 exec --no-startup-id greenclip daemon
 exec_always --no-startup-id $HOME/.config/polybar/launch.sh
 exec_always --no-startup-id "sleep 1 && ~/.local/bin/lid-suspend-sync"

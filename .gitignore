@@ -88,6 +88,9 @@ polybar/*
 !polybar/colors-dark.ini
 !polybar/colors-light.ini
 
+!voice-chat/
+!voice-chat/config
+
 !wallpapers/
 wallpapers/*
 !wallpapers/wallpaper1.jpeg
@@ -199,6 +202,11 @@ new-machine-setup/*
 !new-machine-setup/toggle-theme
 !new-machine-setup/voice-dictation
 !new-machine-setup/voice-dictation-transcribe
+!new-machine-setup/voice-chat
+!new-machine-setup/voice-chat-parse
+!new-machine-setup/voice-chat-tts
+!new-machine-setup/voice-chat-speak-kokoro
+!new-machine-setup/voice-chat-speak-xtts
 !new-machine-setup/standup-record
 !new-machine-setup/standup-transcribe-worker
 !new-machine-setup/lid-suspend-toggle
@@ -283,6 +291,10 @@ i3/colors
 applications/*
 !applications/jupyter-lab.desktop
 !applications/mpv-audio.desktop
+
+!autostart/
+autostart/*
+!autostart/picom.desktop
 
 !zathura/
 zathura/*

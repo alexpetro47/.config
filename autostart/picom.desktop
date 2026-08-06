@@ -1,0 +1,8 @@
+[Desktop Entry]
+# User override of /etc/xdg/autostart/picom.desktop (apt-installed).
+# Hidden=true suppresses the system entry so dex --autostart skips it,
+# leaving picom OFF by default. Toggle on with Alt+Shift+p (picom-toggle).
+Type=Application
+Name=picom
+Exec=picom
+Hidden=true

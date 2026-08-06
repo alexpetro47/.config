@@ -1,6 +1,8 @@
 # PANDOC DEFAULTS
 
-reader: markdown+hard_line_breaks+strikeout+task_lists+smart+raw_tex
+# lists_without_preceding_blankline: a "- item" run directly under a **heading**
+# line is a real list, not a lazy paragraph continuation (GFM behaviour)
+reader: markdown+hard_line_breaks+strikeout+task_lists+smart+raw_tex+lists_without_preceding_blankline
 writer: pdf
 
 standalone: true
@@ -12,6 +14,8 @@ columns: 72
 filters:
   - /home/alexpetro/.config/pandoc/newpage-filter.lua
   - /home/alexpetro/.config/pandoc/highlight-filter.lua
+  # drop this line to keep literal -> and => in prose
+  - /home/alexpetro/.config/pandoc/arrows-filter.lua
   # - mermaid-filter
 
 highlight-style: tango
@@ -22,21 +26,21 @@ metadata:
   #   width: 1200
   #   format: svg
   #   background: transparent
-  geometry: margin=0.75in
+  geometry: margin=1.1in
   fontsize: 11pt
   documentclass: article
   papersize: letter
   colorlinks: true
   linkcolor: blue
   urlcolor: blue
-  mainfont: "DejaVu Serif"
-  sansfont: "DejaVu Sans"
+  mainfont: "Bitstream Charter"
+  sansfont: "TeX Gyre Heros"
   monofont: "DejaVu Sans Mono"
   pagestyle: plain
   listings: true
 
 variables:
-  geometry: margin=0.75in
+  geometry: margin=1.1in
   fontsize: 11pt
 
 include-in-header:

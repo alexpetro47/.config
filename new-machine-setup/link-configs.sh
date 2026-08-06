@@ -106,6 +106,13 @@ if [ -f "$CONFIG_DIR/new-machine-setup/vpn-sync" ]; then
     _link_config "$CONFIG_DIR/new-machine-setup/vpn-sync" "$HOME/.local/bin/vpn-sync"
 fi
 
+# Voice chat (spoken conversation with a Claude agent)
+for _vc in voice-chat voice-chat-parse voice-chat-tts voice-chat-speak-kokoro voice-chat-speak-xtts; do
+    if [ -f "$CONFIG_DIR/new-machine-setup/$_vc" ]; then
+        _link_config "$CONFIG_DIR/new-machine-setup/$_vc" "$HOME/.local/bin/$_vc"
+    fi
+done
+
 # Backup scripts
 if [ -f "$CONFIG_DIR/scripts/backup" ]; then
     _link_config "$CONFIG_DIR/scripts/backup" "$HOME/.local/bin/backup"

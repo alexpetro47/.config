@@ -40,7 +40,7 @@ Scripts are designed for safe re-runs:
 | `Super+Ctrl+v` | Toggle screen recording (zenity setup: full screen/region via slop, fps, optional system audio; ffmpeg → ~/Downloads, polybar dot while recording) |
 | `Alt+Shift+a` | Toggle lid suspend (stay awake when closed) |
 | `Alt+i` | Toggle VPN (Tailscale exit node through DO droplet) |
-| `Alt+Shift+p` | Toggle picom compositor (polybar icon when off) |
+| `Alt+Shift+p` | Toggle picom compositor |
 | `Alt+Shift+s` | Toggle audio recording → split into 4 stems (Demucs) |
 | `Alt+Shift+e` | Toggle real-time note/chord detector popup (taps default sink) |
 | `Alt+Shift+m` | Toggle cava audio spectrum visualizer popup |
@@ -49,6 +49,8 @@ Scripts are designed for safe re-runs:
 | `Alt+Shift+g` | Guitar tab popup (record a riff off the interface → guitar-tabber transcribes it into your library and opens the local web player showing notation + tab with a cursor that follows the recorded audio; Enter stops recording, keybind again to cancel) |
 | `Alt+p` | Toggle desktop sprite (animated Ryu wanders/idles/attacks/somersaults plus tatsu, shoryuken, hadouken, taunt, dash, moonwalk on screen edges; superhero landing when dropped from height; drag to any edge, double-click to attack, right-click to close) |
 | `Alt+Shift+h` | Toggle screen highlighter (draw over the screen with a thick green marker via gromit-mpx; right-click erases, toggle again clears and exits) |
+| `Alt+Shift+j` | Start / hang up a spoken voice-chat call with a Claude agent (push-to-talk: speak, then press to send a turn; Groq Whisper STT → headless `claude -p` streaming → sentence-chunked Kokoro TTS, espeak-ng fallback; conversation remembered across turns via `--resume`, reset each call; polybar cycles mic/hourglass/speaker) |
+| `Alt+Shift+k` / AirPod double-press | Send the current turn (`XF86AudioNext` sends while a call is engaged, else falls through to Spotify next-track) |
 | `Alt+Ctrl+v` | Clipboard history + emoji popup (lists the last 10 clipboard entries via greenclip in a bordered table; press j/k/l/;/'/n/m/,/./ to pick a row newest-first, e to search all emojis via rofimoji; the pick auto-pastes into the window you came from - Ctrl+Shift+V into terminals, Ctrl+V elsewhere; keybind again to dismiss) |
 
 ## Theme

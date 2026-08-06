@@ -15,7 +15,17 @@ payloads() {
     done
     [ "$#" -gt 0 ] && tar -cf - "$@"
   ' | tar -xf - -C "$dest"
+  # the captured request.system is a list of {type,text} cache blocks (not a
+  # plain string), so the prompt is unreadable in the raw JSON. Extract the
+  # concatenated text into a sibling .system.txt per capture.
+  local f
+  for f in "$dest"/**/*.json(N); do
+    jq -r '(.request.system // []) | if type=="string" then . else (map(.text // "") | join("\n")) end' \
+      "$f" > "${f%.json}.system.txt" 2>/dev/null
+  done
   echo "synced $(find "$dest" -name '*.json' | wc -l | tr -d ' ') payloads (3 newest/type) -> $dest"
+  local latest_ady=$(ls -1 "$dest"/ady/*.system.txt(N) 2>/dev/null | sort | tail -1)
+  [ -n "$latest_ady" ] && echo "latest ady system prompt -> $latest_ady"
 }
 
 

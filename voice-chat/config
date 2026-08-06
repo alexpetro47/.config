@@ -1,0 +1,30 @@
+# voice-chat configuration — sourced by ~/.local/bin/voice-chat.
+# The ":=" form means a one-off env override still wins, e.g.:
+#   VC_TTS=xtts voice-chat say "compare this voice"
+
+# TTS engine: kokoro | xtts | espeak | auto   (auto = kokoro if installed, else espeak)
+: "${VC_TTS:=auto}"
+
+# Kokoro voice — af_heart af_bella af_nicole af_sarah am_michael am_puck bf_emma bm_george ...
+: "${VC_VOICE:=af_heart}"
+
+# XTTS-v2 built-in speaker (used when VC_TTS=xtts)
+: "${VC_XTTS_SPEAKER:=Ana Florence}"
+
+# Speaking speed (Kokoro/XTTS)
+: "${VC_SPEED:=1.3}"
+
+# Claude model for the brain
+: "${VC_MODEL:=claude-opus-4-8}"
+
+# --- turn detection -----------------------------------------------------------
+# How long you can pause mid-thought before the turn is cut. This is the knob.
+# Raise it if you get interrupted while thinking; lower it if replies feel slow.
+#   1000  clipped, quick back-and-forth
+#   1600  tolerates a normal mid-sentence beat
+#   2500  default — thinking out loud, long pauses between clauses
+: "${VC_VAD_SILENCE_MS:=2500}"
+
+# Speech/noise decision per 32ms frame. Raise toward 0.7 in a noisy room if the
+# agent starts answering your keyboard; lower toward 0.35 if a quiet voice is missed.
+: "${VC_VAD_THRESHOLD:=0.5}"

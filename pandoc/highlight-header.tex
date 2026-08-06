@@ -5,6 +5,14 @@
 \definecolor{highlight}{RGB}{255,255,140}
 \sethlcolor{highlight}
 \normalem
+% Charter carries no arrow glyphs, so take them from math rather than let
+% xelatex drop the character silently. \ensuremath avoids recursing back into
+% these same mappings, which a literal glyph in the replacement would do.
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{⇒}{\ensuremath{\Rightarrow}}
+\newunicodechar{↔}{\ensuremath{\leftrightarrow}}
+\newunicodechar{⇔}{\ensuremath{\Leftrightarrow}}
 % Compact list spacing
 \setlist{itemsep=0.5pt,topsep=1pt,parsep=1pt,partopsep=0pt}
 % Code wrapping

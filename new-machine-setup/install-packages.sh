@@ -66,6 +66,7 @@ sudo apt install -y \
     sox \
     libsox-fmt-all \
     pulseaudio-utils \
+    libportaudio2 \
     cava \
     mpv \
     libgtk-3-dev \
@@ -213,6 +214,17 @@ if [ -x "$HOME/.config/new-machine-setup/audio-analyze" ]; then
         && "$HOME/.config/new-machine-setup/audio-analyze" tempo-key "$_aa_tmp" >/dev/null 2>&1 || true
     rm -f "$_aa_tmp"
 fi
+# Kokoro TTS model for voice-chat (natural local voice; espeak-ng is the fallback until this lands).
+# The kokoro-onnx Python deps self-bootstrap via uv on first run; only the model files need fetching.
+KOKORO_DIR="$HOME/.local/share/kokoro"
+if [ ! -f "$KOKORO_DIR/kokoro-v1.0.onnx" ] || [ ! -f "$KOKORO_DIR/voices-v1.0.bin" ]; then
+    log "Downloading Kokoro TTS model (~350MB)..."
+    mkdir -p "$KOKORO_DIR"
+    _kbase="https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0"
+    curl -fL -o "$KOKORO_DIR/kokoro-v1.0.onnx" "$_kbase/kokoro-v1.0.onnx" || true
+    curl -fL -o "$KOKORO_DIR/voices-v1.0.bin"  "$_kbase/voices-v1.0.bin"  || true
+fi
+
 # rclip: semantic image search - isolated project (torch dep issues with uv tool install)
 if [ ! -f "$HOME/.local/share/rclip-env/.venv/bin/rclip" ]; then
     log "Installing rclip (isolated environment)..."
