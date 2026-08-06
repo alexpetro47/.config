@@ -19,7 +19,8 @@
 !assets/cursors/ComixCursorWhite/
 !assets/cursors/ComixCursorWhite/**
 !assets/wallpapers/
-!assets/wallpapers/wallpaper.png
+!assets/wallpapers/*.png
+!assets/wallpapers/*.jpg
 !assets/keychron_v4_ansi.layout.json
 assets/fonts/
 # fonts downloaded via install.sh, not tracked
