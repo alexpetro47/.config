@@ -169,8 +169,9 @@ bindsym $mod+a exec --no-startup-id ~/.local/bin/airpods-toggle
 
 exec --no-startup-id ~/.xsessionrc
 # exec --no-startup-id xcompmgr -C
-exec --no-startup-id feh --bg-fill ~/.config/assets/wallpapers/kristaps-ungurs-nE6sgEw2FjY-unsplash.jpg
+exec --no-startup-id feh --bg-fill ~/.config/assets/wallpapers/valentine-dexheimer-wzTSUHBRVJU-unsplash.jpg
 exec --no-startup-id greenclip daemon
+exec --no-startup-id /usr/lib/x86_64-linux-gnu/libexec/kdeconnectd
 exec_always --no-startup-id $HOME/.config/polybar/launch.sh
 exec_always --no-startup-id "sleep 1 && ~/.local/bin/lid-suspend-sync"
 exec_always --no-startup-id "sleep 1 && ~/.local/bin/vpn-sync"

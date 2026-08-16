@@ -9,6 +9,15 @@ curl -fsSL https://tailscale.com/install.sh | sh
 sudo tailscale up
 ```
 
+kdeconnect pairing - one-time per machine (pairing keys live untracked in ~/.config/kdeconnect).
+Daemon is autostarted by i3 config. Same Wi-Fi, open KDE Connect app on the phone (iOS only
+announces while foregrounded), then:
+```
+kdeconnect-cli --list-available   # get device id
+kdeconnect-cli --pair -d <id>     # accept prompt on phone
+```
+If discovery fails (AP client isolation), use "Add device by IP" in the iOS app.
+
 ## Desktop
 
 picom - compositor for transparency/shadows (disabled - causes idle crashes)

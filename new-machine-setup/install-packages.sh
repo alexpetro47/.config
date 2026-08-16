@@ -77,6 +77,7 @@ sudo apt install -y \
     flatpak \
     libsecret-tools \
     libheif-examples \
+    kdeconnect \
 
 # =============================================================================
 # BROWSERS
