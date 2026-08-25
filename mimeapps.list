@@ -29,6 +29,7 @@ audio/mp4=mpv-audio.desktop
 audio/aac=mpv-audio.desktop
 audio/x-ms-wma=mpv-audio.desktop
 audio/x-wavpack=mpv-audio.desktop
+x-scheme-handler/paper=paper-desktop.desktop
 
 [Added Associations]
 application/pdf=libreoffice-draw.desktop;org.pwmt.zathura-pdf-poppler.desktop;

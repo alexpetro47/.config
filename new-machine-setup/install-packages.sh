@@ -582,6 +582,62 @@ else
 fi
 
 # =============================================================================
+# PAPER DESKTOP (AppImage, needs libfuse2 - hosts the paper MCP server, see ~/.claude/mcp's.md)
+# =============================================================================
+if ! installed paper; then
+    log "Installing Paper Desktop..."
+    mkdir -p "$HOME/.local/bin"
+    curl -fLo "$HOME/.local/bin/paper" "https://download.paper.design/linux"
+    chmod +x "$HOME/.local/bin/paper"
+else
+    log "Paper Desktop already installed"
+fi
+
+# AppArmor userns grant - without it the Chromium sandbox aborts on launch
+# (kernel.apparmor_restrict_unprivileged_userns=1 on Ubuntu 24.04+)
+if [ ! -f /etc/apparmor.d/paper-desktop ]; then
+    log "Installing paper-desktop AppArmor profile..."
+    sudo tee /etc/apparmor.d/paper-desktop > /dev/null << 'EOF'
+abi <abi/4.0>,
+include <tunables/global>
+
+profile paper-desktop /tmp/.mount_paper*/paper-desktop flags=(unconfined) {
+  userns,
+
+  include if exists <local/paper-desktop>
+}
+EOF
+    sudo apparmor_parser -r /etc/apparmor.d/paper-desktop
+else
+    log "paper-desktop AppArmor profile already present"
+fi
+
+# Desktop entry + paper:// scheme handler - OAuth login opens paper://...callback
+if [ ! -f "$HOME/.local/share/applications/paper-desktop.desktop" ]; then
+    log "Registering paper:// URL scheme handler..."
+    mkdir -p "$HOME/.local/share/applications" "$HOME/.local/share/icons/hicolor/1024x1024/apps"
+    (cd /tmp && "$HOME/.local/bin/paper" --appimage-extract "usr/share/icons/hicolor/1024x1024/apps/paper-desktop.png" > /dev/null \
+        && cp squashfs-root/usr/share/icons/hicolor/1024x1024/apps/paper-desktop.png "$HOME/.local/share/icons/hicolor/1024x1024/apps/" \
+        && rm -rf squashfs-root)
+    cat > "$HOME/.local/share/applications/paper-desktop.desktop" << EOF
+[Desktop Entry]
+Name=Paper
+Exec=$HOME/.local/bin/paper %U
+Terminal=false
+Type=Application
+Icon=paper-desktop
+StartupWMClass=Paper
+Comment=Paper Desktop
+MimeType=x-scheme-handler/paper;
+Categories=Utility;
+EOF
+    update-desktop-database "$HOME/.local/share/applications" || true
+    xdg-mime default paper-desktop.desktop x-scheme-handler/paper
+else
+    log "paper-desktop desktop entry already present"
+fi
+
+# =============================================================================
 # REAPER DAW (manual download required)
 # =============================================================================
 if [ ! -f "$HOME/.local/opt/reaper/reaper" ]; then
