@@ -48,6 +48,7 @@ tmux/*
 !tmux/tmux.conf
 !tmux/git-status.sh
 !tmux/zen-mode.sh
+!tmux/todo-popup.sh
 
 !tmux-sessionizer/
 tmux-sessionizer/*
