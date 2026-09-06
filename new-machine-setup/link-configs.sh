@@ -44,6 +44,8 @@ rm -f "$HOME/.zshrc"
 _link_config "$CONFIG_DIR/zsh/.zshrc" "$HOME/.zshrc"
 _link_config "$CONFIG_DIR/tmux/tmux.conf" "$HOME/.tmux.conf"
 _link_config "$CONFIG_DIR/.xsessionrc" "$HOME/.xsessionrc"
+# pi coding agent: only settings.json is tracked - auth.json and sessions/ stay untracked in ~/.pi/agent
+_link_config "$CONFIG_DIR/pi/settings.json" "$HOME/.pi/agent/settings.json"
 
 # =============================================================================
 # XDG_CONFIG_HOME SYMLINKS

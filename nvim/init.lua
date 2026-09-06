@@ -145,7 +145,7 @@ vim.keymap.set('v', '<leader>r', [[:g/^\s*$/d<CR>]], {desc = 'remove blank lines
 vim.keymap.set('v', '<leader>}', ":g/^\\s*$/s/^/ /<CR>", { desc = 'Add two spaces to start of each blank line in selection' })
 vim.keymap.set('n', '<leader>t', '<Esc>gg0:r !basename %<CR>/\\.<CR>"_d$VgUI# <Esc>V:s/[_-]/ /g<CR>2o<Esc>', {desc = 'insert filename as title'})
 vim.keymap.set('n', '<leader>*', 'I* <Esc>:s/\\s*,\\s*/\\r* /g<CR>', {desc = 'comma separted list to bullets'})
-vim.keymap.set('n', '<leader>T', 'I- [ ] ', {desc = 'todo item'})
+vim.keymap.set('n', '<leader>T', 'I- [ ] <Esc>', {desc = 'todo item'})
 vim.keymap.set('n', '<leader>d', ':! cp %:p ~/Downloads/<CR>', { noremap = true, silent = true, desc = 'copy file to Downloads' })
 
 --Window Management

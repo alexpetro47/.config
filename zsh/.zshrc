@@ -39,8 +39,11 @@ payloads() {
 
 
 
-# Source API keys from ~/.claude/.env
-[ -f "$HOME/.claude/.env" ] && export $(grep -v '^#' "$HOME/.claude/.env" | xargs)
+# Source API keys (names documented in ~/.config/.env.example)
+for _envfile in "$HOME/.config/.env"; do
+  [ -f "$_envfile" ] && export $(grep -v '^#' "$_envfile" | xargs)
+done
+unset _envfile
 
 export EDITOR=nvim
 export BUN_INSTALL="$HOME/.bun"

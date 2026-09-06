@@ -16,7 +16,7 @@ for cmd in i3 zsh alacritty tmux nvim rofi polybar; do
 done
 
 section "Dev"
-for cmd in git uv cargo node claude lazygit docker; do
+for cmd in git uv cargo node claude pi lazygit docker; do
     command -v "$cmd" &>/dev/null && pass "$cmd" || fail "$cmd"
 done
 

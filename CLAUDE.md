@@ -34,7 +34,7 @@ Scripts are designed for safe re-runs:
 
 | Key | Action |
 |-----|--------|
-| `Alt+Shift+t` | Toggle theme (dark/light) |
+| `Alt+Shift+t` | Launch Telegram (Flatpak wrapper `~/.local/bin/telegram`) |
 | `Alt+Shift+n` | Toggle focus mode (notifications) |
 | `Alt+Shift+b` | Toggle polybar |
 | `Super+Ctrl+v` | Toggle screen recording (zenity setup: full screen/region via slop, fps, optional system audio; ffmpeg → ~/Downloads, polybar dot while recording) |

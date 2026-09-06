@@ -329,6 +329,9 @@ npm config set prefix ~/.local
 
 log "Installing npm global packages..."
 npm install -g markserv @mermaid-js/mermaid-cli
+# pi coding agent: --ignore-scripts is upstream's documented install (skips its postinstall);
+# separate line so it doesn't strip scripts from mermaid-cli's chromium fetch.
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent
 
 # =============================================================================
 # BUN

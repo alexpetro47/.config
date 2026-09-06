@@ -27,6 +27,8 @@ curl -fsSL https://raw.githubusercontent.com/justatoaster47/linux_dotfiles/main/
     - autocomplete suggestions: bookmarks (only)
 - first git push will have you authenticate in browser
 - spotify login
+- `cp ~/.config/.env.example ~/.config/.env` then fill in keys (sourced by `.zshrc`)
+- `pi` → `/login` - pi coding agent auth (subscription or API key; creds in `~/.pi/agent/`)
 - `bw login` - authenticate bitwarden CLI (for password backups)
 - (in alacritty) `<C-w>I` to install tmux plugins
 - `rclone config` - create `gdrive` remote for `backup` script

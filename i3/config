@@ -84,7 +84,7 @@ bindsym --whole-window button2 kill
 bindsym $mod+ctrl+f floating toggle, border pixel 4, resize set 800 950, move position center
 
 bindsym $mod+c exec --no-startup-id ~/.local/bin/screenshot
-# bindsym $mod+t exec --no-startup-id telegram
+bindsym $mod+Shift+t exec --no-startup-id telegram
 bindsym $mod+f exec --no-startup-id rofi -show drun
 bindsym $mod+r exec --no-startup-id reaper
 bindsym $mod+h exec --no-startup-id google-chrome --remote-debugging-port=9222
@@ -215,7 +215,7 @@ for_window [class="desktop-sprite"] floating enable, sticky enable, border none
 
 # Auto-assign applications to specific workspaces
 assign [class="google-chrome"] 7
-# assign [class="Google-chrome"] 7
+assign [class="Google-chrome"] 7
 # Playwright MCP browser (launched with --class=PlaywrightMCP) lands on ws7, no focus steal
 assign [class="PlaywrightMCP"] 7
 

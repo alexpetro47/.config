@@ -319,3 +319,9 @@ wireplumber/policy.lua.d/*
 
 !.docs/
 !.docs/**
+
+!.env.example
+
+!pi/
+pi/*
+!pi/settings.json

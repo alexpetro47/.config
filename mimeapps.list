@@ -30,6 +30,7 @@ audio/aac=mpv-audio.desktop
 audio/x-ms-wma=mpv-audio.desktop
 audio/x-wavpack=mpv-audio.desktop
 x-scheme-handler/paper=paper-desktop.desktop
+x-scheme-handler/slack=slack.desktop
 
 [Added Associations]
 application/pdf=libreoffice-draw.desktop;org.pwmt.zathura-pdf-poppler.desktop;
