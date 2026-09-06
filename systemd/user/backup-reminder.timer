@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily check for an overdue Bitwarden backup
+
+[Timer]
+OnCalendar=daily
+# Catch up after boot: a laptop is asleep at 00:00 most nights, and cron would just skip it.
+Persistent=true
+# Spread the wake-up so a boot-time catch-up does not land the instant the machine comes up.
+RandomizedDelaySec=30m
+
+[Install]
+WantedBy=timers.target

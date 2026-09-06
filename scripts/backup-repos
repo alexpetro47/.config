@@ -1,78 +1,84 @@
 #!/bin/bash
-set -e
+#
+# Mirrors the GitHub repos listed in rclone/backup-repos.txt to gdrive:BACKUPS/repos/
+# as dated git bundles.
+#
+# A bundle is one file holding every ref and all history, so restore is a plain
+# `git clone <name>-YYYYMMDD.bundle <dir>`. One file per repo also keeps rclone from
+# churning through thousands of loose objects, which is what a bare mirror would cost.
+#
+# Mirrors capture only what is pushed. Uncommitted work is not backed up by anything.
+#
+set -euo pipefail
 
 MANIFEST="$HOME/.config/rclone/backup-repos.txt"
-REMOTE="gdrive:BACKUPS"
-DRY_RUN=""
+REMOTE="gdrive:BACKUPS/repos"
 KEEP_VERSIONS=3
+DATE=$(date +%Y%m%d)
+DRY_RUN=""
 
-log() { echo "[$(date +%H:%M:%S)] $*"; }
+log() { echo "[repos] $*"; }
+err() { echo "[repos] ERROR: $*" >&2; }
 
-_path_from_home() {
-    # /home/user/Documents/foo → Documents/foo
-    echo "${1#$HOME/}"
-}
+[[ "${1:-}" == "--dry-run" ]] && { DRY_RUN="--dry-run"; log "DRY RUN MODE"; }
 
-_prune_versions() {
-    local remote_path="$1"
+for cmd in git gh rclone; do
+    command -v "$cmd" &>/dev/null || { err "$cmd not installed"; exit 1; }
+done
+gh auth status &>/dev/null || { err "gh not authenticated. Run: gh auth login"; exit 1; }
 
-    local versions=$(rclone lsf "$REMOTE/$remote_path" --dirs-only 2>/dev/null | \
-        grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}/$" | \
-        sort -r)
+# The repos are private and the global helper (git-credential-manager) is interactive, which
+# a timer or a headless run cannot satisfy. This helper hands git the gh token on stdout, so
+# it never appears in argv where /proc/<pid>/cmdline would expose it.
+GIT_CRED='!f() { echo username=x-access-token; echo "password=$(gh auth token)"; }; f'
 
-    local count=0
-    while IFS= read -r ver; do
-        [[ -z "$ver" ]] && continue
-        ((++count))
-        if [[ $count -gt $KEEP_VERSIONS ]]; then
-            log "Pruning old version: $remote_path/$ver"
-            [[ -z "$DRY_RUN" ]] && rclone purge "$REMOTE/$remote_path/$ver"
-        fi
-    done <<< "$versions"
-}
+WORK=$(mktemp -d)
+trap 'rm -rf "$WORK"' EXIT
+mkdir -p "$WORK/out"
 
-_sync_full() {
-    local path="$1" remote_path="$2"
-    local version_dir="$REMOTE/$remote_path/$(date +%Y-%m-%d_%H-%M)"
+count=0
+while IFS= read -r entry || [[ -n "$entry" ]]; do
+    entry="${entry%%#*}"                      # strip comments
+    entry="$(echo "$entry" | xargs)"          # trim whitespace
+    [[ -z "$entry" ]] && continue
 
-    log "Copying (full): $path → $version_dir"
-    rclone copy "$path" "$version_dir" $DRY_RUN --progress
+    slug="${entry#https://github.com/}"       # accept a full URL or owner/name
+    slug="${slug%.git}"
+    name="${slug##*/}"
+    url="https://github.com/${slug}.git"
 
-    _prune_versions "$remote_path"
-}
-
-_sync_git() {
-    local path="$1" remote_path="$2"
-    local version_dir="$REMOTE/$remote_path/$(date +%Y-%m-%d_%H-%M)"
-    local tmpfile=$(mktemp)
-
-    log "Copying (git): $path → $version_dir"
-    (cd "$path" && git ls-files && git ls-files --others --exclude-standard) | sort -u > "$tmpfile"
-    rclone copy "$path" "$version_dir" --files-from "$tmpfile" $DRY_RUN --progress
-    rm "$tmpfile"
-
-    _prune_versions "$remote_path"
-}
-
-# Parse args
-[[ "$1" == "--dry-run" ]] && DRY_RUN="--dry-run" && log "DRY RUN MODE"
-
-# Process manifest
-while IFS=: read -r path mode; do
-    [[ "$path" =~ ^#.*$ || -z "$path" ]] && continue
-    path="${path%/}"  # trim trailing slash
-    remote_path=$(_path_from_home "$path")
-
-    if [[ ! -d "$path" ]]; then
-        log "SKIP: Directory not found: $path"
-        continue
+    log "Mirroring $slug"
+    if ! git -c credential.helper= -c credential.helper="$GIT_CRED" \
+            clone --quiet --mirror "$url" "$WORK/$name.git"; then
+        err "clone failed: $slug"
+        exit 1
     fi
 
-    case "$mode" in
-        git)  _sync_git "$path" "$remote_path" ;;
-        full) _sync_full "$path" "$remote_path" ;;
-        *)    log "ERROR: Unknown mode '$mode' for $path" ;;
-    esac
+    git -C "$WORK/$name.git" bundle create "$WORK/out/$name-$DATE.bundle" --all --quiet
+    # A bundle that does not verify is worse than no bundle: it looks like a backup.
+    git -C "$WORK/$name.git" bundle verify "$WORK/out/$name-$DATE.bundle" >/dev/null
+    rm -rf "$WORK/$name.git"
+
+    log "  $(du -h "$WORK/out/$name-$DATE.bundle" | cut -f1) bundle, verified"
+    count=$((count + 1))
 done < "$MANIFEST"
+
+[[ "$count" -gt 0 ]] || { err "manifest listed no repos"; exit 1; }
+
+log "Uploading $count bundle(s) to $REMOTE"
+rclone copy "$WORK/out" "$REMOTE" $DRY_RUN --progress
+
+# Keep the newest KEEP_VERSIONS dated bundles per repo.
+for f in "$WORK/out"/*.bundle; do
+    name=$(basename "$f"); name="${name%-*}"
+    # ".claude" is a legal repo name, and an unescaped dot here would also match "xclaude-".
+    stale=$(rclone lsf "$REMOTE" --files-only 2>/dev/null \
+        | grep -E "^${name//./\\.}-[0-9]{8}\.bundle$" | sort -r | tail -n +$((KEEP_VERSIONS + 1))) || true
+    while IFS= read -r old; do
+        [[ -z "$old" ]] && continue
+        log "Pruning $old"
+        [[ -z "$DRY_RUN" ]] && rclone deletefile "$REMOTE/$old"
+    done <<< "$stale"
+done
 
 log "Backup complete"

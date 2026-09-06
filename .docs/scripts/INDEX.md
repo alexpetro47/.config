@@ -7,7 +7,6 @@ Utility scripts provided by this repository. All scripts are in `new-machine-set
 | File | Description |
 |------|-------------|
 | [toggles.md](toggles.md) | System toggle scripts: theme, focus, lid suspend, screen recording, polybar. |
-| [backup.md](backup.md) | Backup scripts: repos, bitwarden, simplenote, interactive menu. |
 | [voice.md](voice.md) | Voice dictation scripts: recording controller and transcription worker. |
 | [media.md](media.md) | Speed reading utilities and media processing tools. |
 | [system.md](system.md) | System utilities: lock screen, tmux sessionizer, ralf CLI. |
@@ -60,7 +59,8 @@ Cloud sync utilities:
 - `backup` - Interactive menu
 - `backup-repos` - Repository sync
 - `backup-bitwarden` - Vault export
-- `backup-simplenote` - Notes sync
+
+See [features/backup.md](../features/backup.md) for the full system.
 
 ### Voice
 

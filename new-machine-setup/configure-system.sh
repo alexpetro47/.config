@@ -53,6 +53,12 @@ sudo systemctl enable docker 2>/dev/null || log "WARN: docker enable failed"
 systemctl --user disable --now gnome-remote-desktop.service 2>/dev/null || true
 log "GNOME Remote Desktop disabled"
 
+# Overdue-backup reminder. Unit files live in ~/.config/systemd/user (this repo), so the
+# daemon-reload is what makes a fresh machine notice them.
+systemctl --user daemon-reload
+systemctl --user enable --now backup-reminder.timer 2>/dev/null || log "WARN: backup-reminder.timer enable failed"
+log "Backup reminder timer enabled"
+
 # TLP power management - optimized for unplugged laptop use
 if command -v tlp &>/dev/null; then
     log "Enabling TLP power management..."

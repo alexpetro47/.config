@@ -139,7 +139,6 @@ scripts/*
 !scripts/backup
 !scripts/backup-bitwarden
 !scripts/backup-repos
-!scripts/backup-simplenote
 !scripts/lock
 !scripts/speedread-keys
 !scripts/speedread-tui
@@ -339,3 +338,10 @@ pi/extensions/pi-web-access/*
 !pi/extensions/pi-subagents/
 pi/extensions/pi-subagents/*
 !pi/extensions/pi-subagents/index.ts
+
+!systemd/
+systemd/*
+!systemd/user/
+systemd/user/*
+!systemd/user/backup-reminder.service
+!systemd/user/backup-reminder.timer

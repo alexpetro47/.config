@@ -1,10 +1,8 @@
-# Backup repos manifest
-# Format: /absolute/path:mode
-# Modes: git (non-gitignored files only), full (all files)
+# GitHub repos mirrored to gdrive:BACKUPS/repos/ as dated git bundles.
+# One per line: a full URL or owner/name. Private repos work via `gh auth`.
 #
-# Examples:
-# /home/alexpetro/Documents/code/myproject:git
-# /home/alexpetro/Documents/notes:full
+# Mirrors capture pushed history only. Nothing here backs up uncommitted work.
 
-/home/alexpetro/.claude:git
-/home/alexpetro/.config:git
+https://github.com/alexpetro47/linux_dotfiles
+https://github.com/alexpetro47/.claude
+https://github.com/alexpetro47/daily_notes

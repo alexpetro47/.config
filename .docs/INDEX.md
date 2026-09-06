@@ -41,7 +41,7 @@ curl -fsSL https://raw.githubusercontent.com/justatoaster47/linux_dotfiles/main/
 ### Backup
 ```bash
 backup              # Interactive menu
-backup --all        # Bitwarden + Simplenote + Repos
+backup --all        # Bitwarden + Repos
 backup --repos      # Repos only
 backup --dry-run    # Preview sync
 ```

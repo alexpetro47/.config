@@ -41,7 +41,7 @@ payloads() {
 
 # API keys live in the `laptop` bws project, not on disk. Nothing is exported at login: `envload`
 # pulls them into the current shell when something needs them, so opening a terminal stays instant.
-envload() { . "$HOME/.config/bws-env.sh"; }
+envload() { . "$HOME/.config/bws-env.sh" "$@"; }   # `envload` lists; `envload KEY…` / `--all` exports
 
 export EDITOR=nvim
 export BUN_INSTALL="$HOME/.bun"
@@ -143,7 +143,6 @@ alias c7="markserv"  # markdown live preview in browser
 
 alias musicExport="rclone copy -v ~/Documents/prod/drive_workspace/ google_drive:music/workspace/"
 alias musicImport="rclone copy -v google_drive:music/workspace ~/Documents/prod/drive_workspace"
-# alias noteSync="cd ~/Documents/code/simplenote_sync && uv run python simplenote_sync.py"  # DEPRECATED: script doesn't exist
 
 # mini pc (UM890PRO) - via Tailscale
 # alias pc="ssh alexpetro@alexpetro-um890pro"

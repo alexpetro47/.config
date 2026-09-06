@@ -41,15 +41,13 @@ Contains encrypted tokens. Back up this file securely.
 
 ```
 gdrive:BACKUPS/
-├── .claude/                    # Latest
-├── .claude.2025-01-15_14-30/   # Version 1
-├── .claude.2025-01-14_10-00/   # Version 2
-├── .config/
-├── .config.2025-01-15_14-30/
-├── bitwarden/
-│   └── vault_YYYY-MM-DD.json
-└── SIMPLENOTE/
-    └── SIMPLENOTE.2025-01-15/
+├── repos/
+│   ├── linux_dotfiles-YYYYMMDD.bundle
+│   ├── .claude-YYYYMMDD.bundle
+│   └── daily_notes-YYYYMMDD.bundle
+└── bitwarden/
+    ├── vault-YYYYMMDD.json
+    └── secrets-YYYYMMDD.json.gpg
 ```
 
 ## Common Commands
@@ -93,21 +91,16 @@ Shows what would be changed without doing it.
 
 The backup scripts use rclone internally:
 
-- `backup-repos` - Syncs repositories
-- `backup-bitwarden` - Syncs vault exports
-- `backup-simplenote` - Syncs notes
+- `backup-repos` - Mirrors repos as git bundles
+- `backup-bitwarden` - Syncs vault + secrets exports
 
-See [scripts/backup.md](../scripts/backup.md).
+See [features/backup.md](../features/backup.md).
 
 ## Repo Manifest
 
 `~/.config/rclone/backup-repos.txt`
 
-Format:
-```
-/path/to/repo:git    # Tracked files only
-/path/to/repo:full   # All files
-```
+One GitHub repo per line: a full URL or `owner/name`.
 
 ## Filters
 

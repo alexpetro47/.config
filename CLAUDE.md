@@ -63,20 +63,18 @@ Scripts are designed for safe re-runs:
 
 ```bash
 backup              # interactive menu
-backup --all        # bitwarden + simplenote + repos
-backup --repos      # repos only
-backup --bitwarden  # passwords only
-backup --simplenote # notes only
+backup --all        # bitwarden + repos
+backup --repos      # GitHub repos → git bundles
+backup --bitwarden  # bw password vault + bws machine secrets
 backup --dry-run    # preview repo sync
 ```
 
-- All syncs are versioned: changed/deleted files go to `<name>.YYYY-MM-DD_HH-MM/`, keeps 3 most recent
-- Repos: `gdrive:BACKUPS/` (versions like `.config/2025-01-03_14-30/`)
-- Bitwarden: local `~/.local/share/bitwarden-backup/` (keeps 7 exports), remote `gdrive:BACKUPS/bitwarden/`
-- Simplenote: local `~/.local/share/simplenote-backup/`, remote `gdrive:BACKUPS/SIMPLENOTE/` (versions like `SIMPLENOTE/2025-01-03_14-30/`)
-- Repos manifest: `rclone/backup-repos.txt` (format: `/path:git` or `/path:full`)
-- Setup: `rclone config` → create remote named `gdrive` (see `additional-installs.md`)
-- First run: `bw login` for Bitwarden, create `~/.config/simplenote/credentials` (email + password lines)
+- Repos: `git clone --mirror` each entry in `rclone/backup-repos.txt` → `gdrive:BACKUPS/repos/<name>-YYYYMMDD.bundle`, keeps 3. Backs up the **remote**, so uncommitted work is covered by nothing. Private repos auth via `gh auth token`, not the git credential helper.
+- Bitwarden: local `~/.local/share/bitwarden-backup/` (keeps 7 of each), remote `gdrive:BACKUPS/bitwarden/`. `vault-*.json` = `bw` vault, Bitwarden-encrypted; `secrets-*.json.gpg` = `bws` secrets, gpg AES256. One typed passphrase for both — never from bws or the keyring, so it can't be automated. Restore: `.docs/features/backup.md`
+- Repos manifest: `rclone/backup-repos.txt` — one GitHub URL or `owner/name` per line
+- Reminder: `backup-reminder.timer` (daily) nags via dunst once the newest bitwarden backup is >30 days old; left-click runs it via zenity password boxes. Needs `mouse_left_click = do_action` in dunstrc. Units in `systemd/user/`, enabled by `configure-system.sh`
+- Setup: `rclone config` → create remote named `gdrive` (see `additional-installs.md`). rclone's shared Drive client_id is retired during 2026 — make your own before then or every backup path breaks
+- First run: `bw login` for Bitwarden
 
 ## Tmux Sessionizer
 

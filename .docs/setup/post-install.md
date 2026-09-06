@@ -60,19 +60,6 @@ rclone config
 
 See [additional-installs.md](../../new-machine-setup/additional-installs.md) for detailed instructions.
 
-### 7. Simplenote Credentials
-
-Create credentials file for backup:
-
-```bash
-mkdir -p ~/.config/simplenote
-cat > ~/.config/simplenote/credentials << 'EOF'
-your-email@example.com
-your-password
-EOF
-chmod 600 ~/.config/simplenote/credentials
-```
-
 ## Optional Steps
 
 ### Tailscale (Mesh VPN)

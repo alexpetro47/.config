@@ -131,6 +131,9 @@ fi
 if [ -f "$CONFIG_DIR/scripts/backup-bitwarden" ]; then
     _link_config "$CONFIG_DIR/scripts/backup-bitwarden" "$HOME/.local/bin/backup-bitwarden"
 fi
+if [ -f "$CONFIG_DIR/scripts/backup-reminder" ]; then
+    _link_config "$CONFIG_DIR/scripts/backup-reminder" "$HOME/.local/bin/backup-reminder"
+fi
 
 # Lock script (kills picom during lock)
 if [ -f "$CONFIG_DIR/scripts/lock" ]; then

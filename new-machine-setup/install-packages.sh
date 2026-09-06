@@ -50,6 +50,8 @@ sudo apt install -y \
     zenity \
     inotify-tools \
     curl \
+    jq \
+    gnupg \
     zip \
     unzip \
     wget \

@@ -84,7 +84,7 @@ bindsym --whole-window button2 kill
 bindsym $mod+ctrl+f floating toggle, border pixel 4, resize set 800 950, move position center
 
 bindsym $mod+c exec --no-startup-id ~/.local/bin/screenshot
-bindsym $mod+Shift+t exec --no-startup-id telegram
+bindsym $mod+t exec --no-startup-id telegram
 bindsym $mod+f exec --no-startup-id rofi -show drun
 bindsym $mod+r exec --no-startup-id reaper
 bindsym $mod+h exec --no-startup-id google-chrome --remote-debugging-port=9222
@@ -94,9 +94,8 @@ bindsym $mod+shift+d exec --no-startup-id brave-browser --app=https://excalidraw
 bindsym $mod+shift+c exec --no-startup-id brave-browser --app=https://claude.com
 bindsym $mod+shift+g exec --no-startup-id brave-browser --app=https://gemini.google.com
 bindsym $mod+g exec --no-startup-id brave-browser --app=https://gmail.com
-# bindsym $mod+n exec --no-startup-id brave-browser --app=https://app.simplenote.com
 bindsym $mod+b exec --no-startup-id brave-browser
-bindsym $mod+t exec --no-startup-id google-chrome --app=https://teams.microsoft.com
+bindsym $mod+Shift+t exec --no-startup-id google-chrome --app=https://teams.microsoft.com
 # bindsym $mod+o exec --no-startup-id /snap/bin/obsidian
 # bindsym $mod+shift+o exec --no-startup-id brave-browser --app=https://alexpetro-um890pro.tail1c3769.ts.net/chat
 # bindsym $mod+b exec --no-startup-id brave-browser --remote-debugging-port=9222

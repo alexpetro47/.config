@@ -154,20 +154,6 @@ rclone config
 # → paste auth URL in browser, copy code back → n (not team drive) → y (confirm)
 ```
 
-simplenote-local - sync simplenote to local markdown files
-```
-git clone git@github.com:alexpetro/notes3.git ~/Documents/notes3
-cd ~/Documents/notes3/sn
-cp .env.example .env
-# edit .env with credentials
-uv sync
-./run init
-mkdir -p ~/.config/systemd/user
-cp simplenote-sync.service ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now simplenote-sync
-```
-
 lazysql - tui for databases
 `go install github.com/jorgerojas26/lazysql@latest`
 

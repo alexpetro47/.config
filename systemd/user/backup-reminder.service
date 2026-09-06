@@ -1,0 +1,13 @@
+[Unit]
+Description=Nag if the Bitwarden backup is overdue
+# Needs the graphical session: the notification and the zenity password boxes talk to X/dbus.
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/alexpetro/.local/bin/backup-reminder
+# The backup itself runs inside this unit now; uploads outlast the 90s default.
+TimeoutStartSec=30min
+StandardOutput=journal
+StandardError=journal

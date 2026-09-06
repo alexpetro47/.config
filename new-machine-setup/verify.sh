@@ -20,6 +20,13 @@ for cmd in git uv cargo node claude pi lazygit docker; do
     command -v "$cmd" &>/dev/null && pass "$cmd" || fail "$cmd"
 done
 
+section "Backup"
+for cmd in rclone bw bws gpg jq secret-tool gh; do
+    command -v "$cmd" &>/dev/null && pass "$cmd" || fail "$cmd"
+done
+rclone listremotes 2>/dev/null | grep -q '^gdrive:' && pass "gdrive remote" || fail "gdrive remote (rclone config)"
+systemctl --user is-enabled backup-reminder.timer &>/dev/null && pass "backup-reminder.timer" || fail "backup-reminder.timer"
+
 section "Symlinks"
 for link in ~/.zshrc ~/.tmux.conf; do
     [ -L "$link" ] && pass "$link" || fail "$link"

@@ -7,7 +7,7 @@ Core system capabilities and workflows. These are the primary features that make
 | File | Description |
 |------|-------------|
 | [theming.md](theming.md) | Centralized base16 color management via tinty. Single command updates i3, polybar, terminals, tmux, and GTK apps. |
-| [backup.md](backup.md) | Versioned backup system for repos, Bitwarden vault, and Simplenote. Uses rclone to sync with Google Drive. |
+| [backup.md](backup.md) | Versioned backup system: GitHub repos as git bundles + Bitwarden vault/secrets. Uses rclone to sync with Google Drive. |
 | [voice-dictation.md](voice-dictation.md) | Non-blocking voice input with background transcription. Records via `sox`, transcribes with `whisper-ctranslate2`. |
 | [toggles.md](toggles.md) | System toggles for focus mode, lid suspend, screen recording, and polybar visibility. |
 | [workspace.md](workspace.md) | i3 workspace management and tmux sessionizer for fast project switching. |
@@ -19,7 +19,7 @@ Core system capabilities and workflows. These are the primary features that make
 Dark/light toggle with `Mod+Shift+t`. Updates 6+ applications simultaneously via tinty's base16 color scheme management.
 
 ### Backup
-Interactive backup menu with `backup` command. Supports git-aware repo sync, encrypted Bitwarden exports, and Simplenote sync. All backups are versioned with 3 retained copies.
+Interactive backup menu with `backup` command. Git-bundle repo mirrors and encrypted Bitwarden exports (vault + Secrets Manager).
 
 ### Voice Dictation
 `Mod+v` starts recording, `Mod+v` again stops and transcribes. Output appears in the terminal where recording started. Background transcription keeps the system responsive.

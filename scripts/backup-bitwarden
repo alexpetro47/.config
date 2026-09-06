@@ -1,23 +1,48 @@
 #!/bin/bash
-set -e
+#
+# Backs up both Bitwarden stores to gdrive:BACKUPS/bitwarden:
+#   vault-YYYYMMDD.json      password vault (bw), Bitwarden-native encrypted_json
+#   secrets-YYYYMMDD.json.gpg  Secrets Manager (bws), gpg AES256 symmetric
+#
+# One passphrase, typed, used for both. It is deliberately NOT read from bws or the
+# keyring: those are the things being recovered, so a machine that dies must not hold
+# the key to its own backup. That also means this can never run unattended.
+#
+# Restore: see .docs/features/backup.md
+#
+set -euo pipefail
 
 BACKUP_DIR="$HOME/.local/share/bitwarden-backup"
 REMOTE_DIR="gdrive:BACKUPS/bitwarden"
-EXPORT_FILE="$BACKUP_DIR/vault-$(date +%Y%m%d).json"
+DATE=$(date +%Y%m%d)
+VAULT_FILE="$BACKUP_DIR/vault-$DATE.json"
+SECRETS_FILE="$BACKUP_DIR/secrets-$DATE.json.gpg"
 KEEP_COUNT=7
 
 log() { echo "[bw] $*"; }
 err() { echo "[bw] ERROR: $*" >&2; }
 
+# Reads a secret from the terminal, or from a GUI password box when there is no terminal -
+# which is how the reminder timer runs this. Either way the value comes back on stdout into
+# a variable and never reaches argv.
+ask_secret() {
+    local prompt="$1" value
+    if [ -t 0 ]; then
+        read -rsp "$prompt: " value
+        echo >&2
+        printf '%s' "$value"
+    else
+        zenity --password --title="$prompt" 2>/dev/null
+    fi
+}
+
+for cmd in bw bws gpg jq rclone secret-tool; do
+    command -v "$cmd" &>/dev/null || { err "$cmd not installed"; exit 1; }
+done
+
 mkdir -p "$BACKUP_DIR"
 
-# Check if bw CLI is available
-if ! command -v bw &>/dev/null; then
-    err "Bitwarden CLI not installed"
-    exit 1
-fi
-
-# Get current status
+# --- unlock the password vault -----------------------------------------------
 STATUS=$(bw status 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unauthenticated")
 
 case "$STATUS" in
@@ -27,8 +52,8 @@ case "$STATUS" in
         ;;
     locked)
         log "Vault is locked. Unlocking..."
-        read -sp "Bitwarden master password: " BW_MASTER
-        echo
+        BW_MASTER=$(ask_secret "Bitwarden master password")
+        [ -n "$BW_MASTER" ] || { err "Cancelled"; exit 1; }
         if ! BW_SESSION=$(printf '%s' "$BW_MASTER" | bw unlock --raw 2>/dev/null); then
             err "Failed to unlock vault"
             exit 1
@@ -38,7 +63,7 @@ case "$STATUS" in
         ;;
     unlocked)
         log "Vault already unlocked"
-        if [ -z "$BW_SESSION" ]; then
+        if [ -z "${BW_SESSION:-}" ]; then
             err "Vault unlocked but BW_SESSION not set. Run: export BW_SESSION=\$(bw unlock --raw)"
             exit 1
         fi
@@ -49,28 +74,67 @@ case "$STATUS" in
         ;;
 esac
 
-# Sync vault
+# --- backup passphrase --------------------------------------------------------
+# Confirmed by retyping: a typo produces a valid-looking file that cannot be opened,
+# and you find out a year later.
+PASS=$(ask_secret "Backup passphrase (encrypts vault + secrets)")
+PASS_CONFIRM=$(ask_secret "Confirm backup passphrase")
+[ -n "$PASS" ] || { err "Empty passphrase"; exit 1; }
+[ "$PASS" = "$PASS_CONFIRM" ] || { err "Passphrases do not match"; exit 1; }
+unset PASS_CONFIRM
+
+# --- password vault (bw) ------------------------------------------------------
 log "Syncing vault..."
 bw sync --session "$BW_SESSION" >/dev/null
 
-# Prompt for backup encryption PIN
-read -sp "Backup encryption PIN: " BACKUP_PIN
-echo
+log "Exporting vault -> $VAULT_FILE"
+bw export --format encrypted_json --output "$VAULT_FILE" --password "$PASS" --session "$BW_SESSION"
 
-# Export (encrypted with PIN via Bitwarden native format)
-log "Exporting to $EXPORT_FILE..."
-bw export --format encrypted_json --output "$EXPORT_FILE" --password "$BACKUP_PIN" --session "$BW_SESSION"
+# --- secrets manager (bws) ----------------------------------------------------
+BWS_ACCESS_TOKEN=$(secret-tool lookup service bws account default || true)
+[ -n "$BWS_ACCESS_TOKEN" ] || { err "No bws access token in keyring (service bws, account default)"; exit 1; }
+export BWS_ACCESS_TOKEN
 
-# Clear secrets from memory
-unset BACKUP_PIN
+# No project filter: picks up every project this service account can reach, now and later.
+# A project the token was never granted is invisible here - the projects list below is what
+# makes that miss auditable at restore time.
+log "Exporting Secrets Manager..."
+BWS_PROJECTS=$(bws project list -o json) || { err "bws project list failed - is the keyring token still valid?"; exit 1; }
+BWS_SECRETS=$(bws secret list -o json) || { err "bws secret list failed"; exit 1; }
 
-# Cleanup old exports
-REMOVED=$(ls -t "$BACKUP_DIR"/vault-*.json 2>/dev/null | tail -n +$((KEEP_COUNT + 1)) | wc -l)
-ls -t "$BACKUP_DIR"/vault-*.json 2>/dev/null | tail -n +$((KEEP_COUNT + 1)) | xargs -r rm
-[ "$REMOVED" -gt 0 ] && log "Removed $REMOVED old export(s)"
+COUNT=$(printf '%s' "$BWS_SECRETS" | jq -r 'length')
+[ "$COUNT" -gt 0 ] || { err "bws returned 0 secrets - refusing to write an empty backup over a good one"; exit 1; }
 
-# Sync to remote
+# Secrets go through stdin, never argv (/proc/PID/cmdline is readable). Projects carry no
+# values, so they are safe as a jq argument. The passphrase reaches gpg on fd 3 from a
+# `printf` builtin - the forked subshell keeps this script's argv, so it stays off ps too.
+# Single pipe, no temp file: plaintext never touches disk.
+printf '%s' "$BWS_SECRETS" \
+  | jq --argjson projects "$BWS_PROJECTS" \
+       '{exported: (now|todate), projects: $projects, secrets: .}' \
+  | gpg --batch --yes --symmetric \
+        --cipher-algo AES256 --s2k-mode 3 --s2k-digest-algo SHA512 --s2k-count 65011712 \
+        --passphrase-fd 3 --output "$SECRETS_FILE" 3< <(printf '%s' "$PASS")
+
+unset PASS BWS_SECRETS
+log "Wrote $COUNT secrets -> $SECRETS_FILE"
+
+# --- retention ----------------------------------------------------------------
+prune() {
+    local label="$1" removed count
+    shift
+    removed=$(ls -t "$@" 2>/dev/null | tail -n +$((KEEP_COUNT + 1))) || true
+    if [ -n "$removed" ]; then
+        count=$(printf '%s\n' "$removed" | wc -l)
+        printf '%s\n' "$removed" | xargs -r rm --
+        log "Removed $count old $label export(s)"
+    fi
+}
+prune vault "$BACKUP_DIR"/vault-*.json
+prune secrets "$BACKUP_DIR"/secrets-*.json.gpg
+
+# --- upload -------------------------------------------------------------------
 log "Syncing to $REMOTE_DIR..."
 rclone sync "$BACKUP_DIR" "$REMOTE_DIR" --progress
 
-log "Done. Kept last $KEEP_COUNT exports."
+log "Done. Kept last $KEEP_COUNT of each."

@@ -29,7 +29,7 @@ Creates symlinks from target locations to tracked config files in this repositor
 | `backup` | Interactive backup menu |
 | `backup-repos` | Repository backup to cloud |
 | `backup-bitwarden` | Vault export and sync |
-| `backup-simplenote` | Notes backup |
+| `backup-reminder` | Overdue-backup nag |
 | `lock` | Screen lock (kills picom) |
 | `speedread-*` | Speed reading utilities |
 | `ralf` | ClawdBot CLI wrapper |
