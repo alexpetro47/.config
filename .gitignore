@@ -325,3 +325,17 @@ wireplumber/policy.lua.d/*
 !pi/
 pi/*
 !pi/settings.json
+!pi/extensions/
+pi/extensions/*
+!pi/extensions/context-mode/
+pi/extensions/context-mode/*
+!pi/extensions/context-mode/index.ts
+!pi/extensions/pi-lens/
+pi/extensions/pi-lens/*
+!pi/extensions/pi-lens/index.ts
+!pi/extensions/pi-web-access/
+pi/extensions/pi-web-access/*
+!pi/extensions/pi-web-access/index.ts
+!pi/extensions/pi-subagents/
+pi/extensions/pi-subagents/*
+!pi/extensions/pi-subagents/index.ts
