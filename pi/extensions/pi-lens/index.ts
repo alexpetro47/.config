@@ -200,16 +200,32 @@ export default function (pi: ExtensionAPI) {
     if (active) updateWidget(ctx);
   });
 
-  pi.on("agent_end", (_event, ctx) => {
-    // TLDR stop-hook: summarize what just happened
-    const elapsed = runStart ? ((Date.now() - runStart) / 1000).toFixed(1) : "?";
+  pi.on("agent_end", async (_event, ctx) => {
+    // TLDR stop-hook: flash summary in widget + notify
+    const elapsed = runStart > 0 ? ((Date.now() - runStart) / 1000).toFixed(1) : "?";
     const usage = ctx.getContextUsage();
     const parts: string[] = [`⚡ ${elapsed}s  ·  ${runToolCount} tools  ·  T${turnCount}`];
     if (usage?.tokens) parts.push(`ctx ${fmtTokens(usage.tokens)}`);
     if (runFilesRead.length) parts.push(`read ${runFilesRead.length}`);
     if (runFilesWritten.length) parts.push(`wrote ${runFilesWritten.length}`);
     if (runFilesEdited.length) parts.push(`edited ${runFilesEdited.length}`);
-    ctx.ui.notify(parts.join("  "), "info");
+    const tldr = parts.join("  ");
+
+    // Push into widget (always visible since pi-lens widget is active)
+    const model = ctx.model;
+    const modelTag = model ? `${model.provider}/${model.id}` : "?";
+    ctx.ui.setWidget("pi-lens", [
+      `🔎 ${modelTag}  T${turnCount}  ${tldr}`,
+      "",
+    ]);
+
+    // Also notify
+    await ctx.ui.notify(tldr, "info");
+
+    // Reset to normal widget display after 3s
+    setTimeout(() => {
+      try { if (active) updateWidget(ctx); } catch { /* ctx stale */ }
+    }, 3000);
   });
 
   pi.on("agent_settled", (_event, ctx) => {

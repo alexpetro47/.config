@@ -585,6 +585,16 @@ else
 fi
 
 # =============================================================================
+# COMPOSIO (AI agent integrations platform)
+# =============================================================================
+if ! installed composio; then
+    log "Installing Composio..."
+    curl -fsSL https://composio.dev/install | sh
+else
+    log "Composio already installed"
+fi
+
+# =============================================================================
 # PAPER DESKTOP (AppImage, needs libfuse2 - hosts the paper MCP server, see ~/.claude/mcp's.md)
 # =============================================================================
 if ! installed paper; then

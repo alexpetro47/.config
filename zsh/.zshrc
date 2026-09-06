@@ -39,11 +39,9 @@ payloads() {
 
 
 
-# Source API keys (names documented in ~/.config/.env.example)
-for _envfile in "$HOME/.config/.env"; do
-  [ -f "$_envfile" ] && export $(grep -v '^#' "$_envfile" | xargs)
-done
-unset _envfile
+# API keys live in the `laptop` bws project, not on disk. Nothing is exported at login: `envload`
+# pulls them into the current shell when something needs them, so opening a terminal stays instant.
+envload() { . "$HOME/.config/bws-env.sh"; }
 
 export EDITOR=nvim
 export BUN_INSTALL="$HOME/.bun"
@@ -278,3 +276,6 @@ alias rk='ralph kill'
 
 # Flatpak user apps (for rofi/app launchers)
 export XDG_DATA_DIRS="$HOME/.local/share/flatpak/exports/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+
+# Composio CLI
+export PATH="$HOME/.local/bin:$PATH"
