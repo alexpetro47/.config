@@ -2,7 +2,7 @@
   "lastChangelogVersion": "0.85.1",
   "theme": "dark",
   "defaultProvider": "openrouter",
-  "defaultModel": "z-ai/glm-5.3",
+  "defaultModel": "z-ai/glm-5.3-flash",
   "packages": [
     "npm:@nqbao/pi-json-schema",
     "npm:pi-mcp-adapter"
