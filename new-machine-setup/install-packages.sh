@@ -358,6 +358,20 @@ else
 fi
 
 # =============================================================================
+# CAP (screen recorder / editor - cap.so)
+# =============================================================================
+# Binary is capital-C `Cap`; the .deb redirect always serves the current release.
+if ! installed Cap; then
+    log "Installing Cap..."
+    curl -fsSLo /tmp/cap.deb https://cap.so/download/linux-deb
+    sudo dpkg -i /tmp/cap.deb
+    sudo apt-get install -f -y
+    rm /tmp/cap.deb
+else
+    log "Cap already installed"
+fi
+
+# =============================================================================
 # D2 (Diagram scripting language)
 # =============================================================================
 if ! installed d2; then

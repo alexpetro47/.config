@@ -27,6 +27,7 @@ curl -fsSL https://raw.githubusercontent.com/justatoaster47/linux_dotfiles/main/
     - autocomplete suggestions: bookmarks (only)
 - first git push will have you authenticate in browser
 - spotify login
+- cap sign-in (`Cap` - only needed for cap.so share links; local recording works signed out)
 - `cp ~/.config/.env.example ~/.config/.env` then fill in keys (sourced by `.zshrc`)
 - `pi` → `/login` - pi coding agent auth (subscription or API key; creds in `~/.pi/agent/`)
 - `bw login` - authenticate bitwarden CLI (for password backups)

@@ -241,6 +241,30 @@ fi
 
 
 # =============================================================================
+# APPLICATION DATA DIRECTORIES
+# =============================================================================
+
+# Cap (cap.so) writes studio recordings into its app-data dir and exposes no
+# setting to change the location, so point that dir at ~/Downloads.
+# Uses `ln -sfn`, not the _link_config helper: the target is a *directory*
+# symlink, and plain `ln -sf` would dereference it and create the link inside
+# (~/.../recordings/Downloads) on every re-run.
+cap_recordings="$HOME/.local/share/so.cap.desktop/recordings"
+if [ -e "$cap_recordings" ] && [ ! -L "$cap_recordings" ]; then
+    if [ -d "$cap_recordings" ] && [ -z "$(ls -A "$cap_recordings")" ]; then
+        rmdir "$cap_recordings"
+    else
+        cap_backup="${cap_recordings}.backup-$(date +%Y%m%d-%H%M%S)"
+        log "Backing up existing $cap_recordings to $cap_backup"
+        mv "$cap_recordings" "$cap_backup"
+    fi
+fi
+mkdir -p "$(dirname "$cap_recordings")"
+ln -sfn "$HOME/Downloads" "$cap_recordings"
+log "Linked: $cap_recordings -> $HOME/Downloads"
+
+
+# =============================================================================
 # DESKTOP ENTRIES
 # =============================================================================
 
