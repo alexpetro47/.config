@@ -1,0 +1,37 @@
+# Pin ALSA's `default` PCM to 48 kHz.
+#
+# Why: Cap (screen recorder) computes a fixed ALSA buffer as
+# `int(sample_rate * 0.035)`. cpal's ALSA backend hardcodes a preference for
+# 44100 Hz whenever it falls inside a device's advertised rate range, and the
+# PipeWire ALSA plugin advertises 1..384000 -- so Cap always picked 44100 and
+# asked for a 1543-frame buffer. cpal then calls
+# `snd_pcm_hw_params_set_period_size_near(buffer/4)` followed by an *exact*
+# `snd_pcm_hw_params_set_buffer_size(1543)`. ALSA requires
+# buffer == period * N, and 1543 is prime, so no integer N exists and the call
+# fails with EINVAL(22):
+#
+#   BuildStream: ALSA function 'snd_pcm_hw_params_set_buffer_size'
+#                failed with error 'Invalid argument (22)'
+#
+# Pinning the rate to 48000 puts 44100 out of range, so cpal selects 48000 and
+# Cap asks for 1680 frames == 4 * 420, which ALSA accepts.
+#
+# Cost: none in practice. PipeWire already runs its graph at 48000, so 44.1 kHz
+# clients were being resampled anyway; they now negotiate 48000 up front.
+# ALSA loads this file via $XDG_CONFIG_HOME/alsa/asoundrc (see the @hooks block
+# in /usr/share/alsa/alsa.conf), after /etc/alsa/conf.d, which is why it wins
+# over 99-pipewire-default.conf.
+#
+# Revert: delete this file. No daemon restart needed -- it is read per-process
+# when a client opens a PCM.
+
+pcm.!default {
+    type pipewire
+    playback_node "-1"
+    capture_node  "-1"
+    rate 48000
+    hint {
+        show on
+        description "Default ALSA Device (PipeWire, 48 kHz)"
+    }
+}

@@ -69,6 +69,10 @@ diffview/*
 zsh/*
 !zsh/.zshrc
 
+!alsa/
+alsa/*
+!alsa/asoundrc
+
 !alacritty/
 alacritty/*
 !alacritty/alacritty.toml
