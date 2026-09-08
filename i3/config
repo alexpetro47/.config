@@ -86,7 +86,8 @@ bindsym $mod+ctrl+f floating toggle, border pixel 4, resize set 800 950, move po
 bindsym $mod+c exec --no-startup-id ~/.local/bin/screenshot
 bindsym $mod+t exec --no-startup-id telegram
 bindsym $mod+f exec --no-startup-id rofi -show drun
-bindsym $mod+r exec --no-startup-id reaper
+# bindsym $mod+r exec --no-startup-id reaper
+bindsym $mod+r exec --no-startup-id "pkill -x Cap; while pgrep -x Cap >/dev/null; do sleep 0.1; done; exec Cap"
 bindsym $mod+h exec --no-startup-id google-chrome --remote-debugging-port=9222
 bindsym $mod+m exec --no-startup-id spotify
 bindsym $mod+e exec --no-startup-id thunar ~/Downloads
@@ -202,6 +203,16 @@ for_window [class="guitar-tab"] floating enable, resize set 560 260, move positi
 for_window [class="clipboard-popup"] floating enable, border pixel 4, resize set 920 620, move position center, sticky enable
 
 # mpv audio popup (floating, centered) — mimeapps default handler for audio files
+# Cap (screen recorder): every Cap window reports WM_CLASS "Cap" and
+# _NET_WM_WINDOW_TYPE_NORMAL -- including its overlays -- so i3 manages them as
+# ordinary tiled windows. The fullscreen "Cap Target Select" overlay ends up at
+# 0,16 while still 1920x1200, so its bottom edge sits 16px past the display and
+# Cap's window->display lookup fails with "target_display_crop: Display not found".
+# Float the overlays and pin the selector to 0,0 so it matches the display exactly.
+for_window [class="Cap" title="^Cap Target Select$"] floating enable, border none, move position 0 0
+for_window [class="Cap" title="^Cap Camera$"] floating enable, border none, sticky enable
+for_window [class="Cap" title="^Cap Recording Controls$"] floating enable, border none, sticky enable
+
 for_window [class="mpv"] floating enable, resize set 480 320, move position center
 # bindsym $mod+p exec --no-startup-id ~/.config/scripts/speedread-popup
 # bindsym $mod+Shift+p exec --no-startup-id kitty --class speedread -e ~/.config/scripts/speedread-clipboard
