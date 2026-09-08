@@ -3,6 +3,6 @@
 #
 # Mirrors capture pushed history only. Nothing here backs up uncommitted work.
 
-https://github.com/alexpetro47/linux_dotfiles
+https://github.com/alexpetro47/.config
 https://github.com/alexpetro47/.claude
 https://github.com/alexpetro47/daily_notes
