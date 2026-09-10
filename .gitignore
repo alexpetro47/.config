@@ -28,6 +28,10 @@ assets/fonts/
 !make_installs.sh
 !make_symlinks.sh
 
+# Scripts this machine runs for itself; sync-repos.sh is driven by the agent over ssh
+!bin/
+!bin/*.sh
+
 !nvim/
 nvim/*
 !nvim/init.lua
@@ -349,3 +353,4 @@ systemd/*
 systemd/user/*
 !systemd/user/backup-reminder.service
 !systemd/user/backup-reminder.timer
+!systemd/user/kdeconnect.service
