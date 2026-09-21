@@ -324,6 +324,12 @@ wireplumber/bluetooth.lua.d/*
 wireplumber/policy.lua.d/*
 !wireplumber/policy.lua.d/11-bluetooth-autoswitch.lua
 
+!pipewire/
+pipewire/*
+!pipewire/pipewire.conf.d/
+pipewire/pipewire.conf.d/*
+!pipewire/pipewire.conf.d/internal-mic-fix.conf
+
 !.docs/
 !.docs/**
 
