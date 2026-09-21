@@ -10,7 +10,7 @@ vim.o.swapfile = false
 vim.o.undofile = true
 vim.o.timeoutlen = 1000
 vim.o.updatetime = 50
-vim.wo.signcolumn = 'no'
+vim.wo.signcolumn = 'auto'  -- gutter appears only when a buffer has signs (gitsigns, diagnostics)
 -- vim.wo.signcolumn = 'yes:1'
 vim.wo.number = true
 vim.o.scrolloff = 6
@@ -731,8 +731,8 @@ require('lazy').setup({
         topdelete = { text = '‾' },
         changedelete = { text = '/' },
       },
+      signs_staged_enable = true,
       on_attach = function(bufnr)
-        signs_staged_enabled = true,
         vim.keymap.set('n', 'ghp', require('gitsigns').preview_hunk, { buffer = bufnr, desc = 'git hunk preview' })
         vim.keymap.set({ 'n', 'v' }, 'ghs', require("gitsigns").stage_hunk, {buffer = bufnr, desc = 'git hunk toggle staged' })
         vim.keymap.set({ 'n', 'v' }, 'ghr', require("gitsigns").reset_hunk, {buffer = bufnr, desc = 'git hunk reset' })
