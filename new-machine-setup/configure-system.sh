@@ -120,6 +120,33 @@ if [ -f /etc/bluetooth/main.conf ]; then
 fi
 
 # =============================================================================
+# BRAVE SITE BLOCKLIST
+# =============================================================================
+# Managed policy: blocked domains (and their subdomains) show an error page, and the
+# block can't be switched off from brave://settings. Check it at brave://policy.
+if command -v brave-browser &>/dev/null; then
+    BRAVE_POLICY=/etc/brave/policies/managed/block-sites.json
+    BRAVE_POLICY_JSON='{
+  "URLBlocklist": [
+    "instagram.com",
+    "pinterest.com",
+    "pin.it",
+    "youtube.com",
+    "youtu.be",
+    "x.com",
+    "twitter.com"
+  ]
+}'
+    if [ "$(cat "$BRAVE_POLICY" 2>/dev/null)" != "$BRAVE_POLICY_JSON" ]; then
+        sudo mkdir -p "$(dirname "$BRAVE_POLICY")"
+        echo "$BRAVE_POLICY_JSON" | sudo tee "$BRAVE_POLICY" >/dev/null
+        log "Brave site blocklist written - restart Brave to apply"
+    else
+        log "Brave site blocklist already set"
+    fi
+fi
+
+# =============================================================================
 # DEFAULT APPLICATIONS
 # =============================================================================
 log "Setting default applications..."
