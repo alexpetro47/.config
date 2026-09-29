@@ -45,10 +45,25 @@ fi
 # Update settings.ini (GTK3 apps read this)
 sed -i "s/^gtk-theme-name=.*/gtk-theme-name=$GTK_THEME/" "$HOME/.config/gtk-3.0/settings.ini"
 # xfconf notifies running GTK apps (Thunar)
-xfconf-query -c xsettings -p /Net/ThemeName -s "$GTK_THEME"
+xfconf-query -c xsettings -p /Net/ThemeName -n -t string -s "$GTK_THEME"
 gsettings set org.gnome.desktop.interface color-scheme "prefer-$NEW" 2>/dev/null
+
+# Claude Code has no "auto" theme; write dark/light into user settings.
+# cat > keeps the file's inode/permissions (it's tracked in the ~/.claude repo)
+CLAUDE_SETTINGS="$HOME/.claude/settings.json"
+if [ -f "$CLAUDE_SETTINGS" ] && command -v jq &>/dev/null; then
+    TMP=$(mktemp)
+    jq --indent 2 --arg t "$NEW" '.theme = $t' "$CLAUDE_SETTINGS" > "$TMP" && cat "$TMP" > "$CLAUDE_SETTINGS"
+    rm -f "$TMP"
+fi
 
 # Save new state
 echo "$NEW" > "$STATE_FILE"
+
+# Re-theme running nvim instances (each listens on $XDG_RUNTIME_DIR/nvim.<pid>.0);
+# timeout skips stale sockets left by crashed instances
+for SOCK in "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/nvim.*.0; do
+    [ -S "$SOCK" ] && timeout 1 nvim --server "$SOCK" --remote-expr 'v:lua.ApplyThemeMode()' >/dev/null 2>&1
+done
 
 notify-send "Theme" "$NEW: $SCHEME" 2>/dev/null || echo "$NEW: $SCHEME"

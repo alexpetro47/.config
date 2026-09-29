@@ -37,6 +37,7 @@ Scripts are designed for safe re-runs:
 | `Alt+Shift+t` | Launch Telegram (Flatpak wrapper `~/.local/bin/telegram`) |
 | `Alt+Shift+n` | Toggle focus mode (notifications) |
 | `Alt+Shift+b` | Toggle polybar |
+| `Alt+Ctrl+t` | Toggle light/dark theme (`toggle-theme`: tinty → kitty/tmux/zsh/polybar/i3, GTK + portal color-scheme → Brave/Chrome set to "Device", Claude Code `theme`) |
 | `Super+Ctrl+v` | Toggle screen recording (zenity setup: full screen/region via slop, fps, optional system audio; ffmpeg → ~/Downloads, polybar dot while recording) |
 | `Alt+Shift+a` | Toggle lid suspend (stay awake when closed) |
 | `Alt+i` | Toggle VPN (Tailscale exit node through DO droplet) |

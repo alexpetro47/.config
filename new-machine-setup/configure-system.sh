@@ -147,6 +147,32 @@ if command -v brave-browser &>/dev/null; then
 fi
 
 # =============================================================================
+# BROWSER COLOR SCHEME → DEVICE
+# =============================================================================
+# No policy exists for this, so set the profile pref: color_scheme2 0 = device
+# (follows the portal color-scheme that toggle-theme flips), 1 = light, 2 = dark.
+# The browser rewrites Preferences on exit, so only edit while it's closed.
+for BROWSER_PREFS in \
+    "$HOME/.config/BraveSoftware/Brave-Browser/Default/Preferences:brave" \
+    "$HOME/.config/google-chrome/Default/Preferences:chrome"; do
+    PREFS="${BROWSER_PREFS%:*}"
+    PROC="${BROWSER_PREFS##*:}"
+    [ -f "$PREFS" ] || continue
+    if [ "$(jq '.browser.theme.color_scheme2 // 0' "$PREFS")" = "0" ]; then
+        log "$PROC color scheme already follows device"
+    elif pgrep -x "$PROC" >/dev/null; then
+        log "$PROC is running - close it and re-run to set color scheme to device"
+    else
+        TMP=$(mktemp)
+        jq '.browser.theme.color_scheme = 0 | .browser.theme.color_scheme2 = 0
+            | if .account_values.browser.theme then .account_values.browser.theme.color_scheme = 0 else . end' \
+            "$PREFS" > "$TMP" && cat "$TMP" > "$PREFS"
+        rm -f "$TMP"
+        log "$PROC color scheme set to device"
+    fi
+done
+
+# =============================================================================
 # DEFAULT APPLICATIONS
 # =============================================================================
 log "Setting default applications..."

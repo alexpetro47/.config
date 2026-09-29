@@ -271,6 +271,10 @@ tinted-theming/tinty/*
 gtk-3.0/*
 !gtk-3.0/settings.ini
 
+!xdg-desktop-portal/
+xdg-desktop-portal/*
+!xdg-desktop-portal/i3-portals.conf
+
 !mimeapps.list
 
 # Screen highlighter (gromit-mpx reads ~/.config/gromit-mpx.cfg; .ini is runtime state)

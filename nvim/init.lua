@@ -437,11 +437,18 @@ require('lazy').setup({
   {
     'sainnhe/gruvbox-material',
     config = function()
-      vim.o.background = 'dark'
-      vim.g.gruvbox_material_transparent_background = 2
-      -- vim.o.background = 'light'
-      -- vim.g.gruvbox_material_transparent_background = 0
-      vim.cmd.colorscheme 'gruvbox-material'
+      -- follows ~/.config/theme-mode (written by toggle-theme); toggle-theme
+      -- also calls this over each running nvim's --server socket
+      function _G.ApplyThemeMode()
+        local f = io.open(vim.fn.expand '~/.config/theme-mode')
+        local mode = f and vim.trim(f:read '*a') or 'dark'
+        if f then f:close() end
+        vim.o.background = mode == 'light' and 'light' or 'dark'
+        vim.g.gruvbox_material_transparent_background = mode == 'light' and 0 or 2
+        vim.cmd.colorscheme 'gruvbox-material'
+        return ''
+      end
+      ApplyThemeMode()
     end,
   },
 

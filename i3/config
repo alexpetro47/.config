@@ -107,7 +107,7 @@ bindsym $mod+Shift+t exec --no-startup-id google-chrome --app=https://teams.micr
 # bindsym $mod+Shift+b exec --no-startup-id polybar-msg cmd toggle
 
 # Theme toggle (gruvbox dark/light)
-# bindsym $mod+ctrl+t exec --no-startup-id ~/.local/bin/toggle-theme
+bindsym $mod+ctrl+t exec --no-startup-id ~/.local/bin/toggle-theme
 
 # Focus mode (disable notifications)
 # bindsym $mod+Shift+n exec --no-startup-id ~/.local/bin/focus-toggle

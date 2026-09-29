@@ -45,5 +45,15 @@ path = "https://github.com/tinted-theming/base16-i3"
 # client.* border mapping in the same file (i3's `include` does NOT propagate
 # `set` vars to the parent, so the directives must sit beside the vars here).
 themes-dir = "colors"
-hook = "cp -f \"$TINTY_THEME_FILE_PATH\" ~/.config/i3/colors && printf '\\nclient.focused          $base0D $base00 $base05 $base0D $base0D\\nclient.unfocused        $base01 $base00 $base03 $base01 $base01\\nclient.urgent           $base08 $base08 $base00 $base08 $base08\\n' >> ~/.config/i3/colors && i3-msg reload 2>/dev/null || true"
+hook = "cp -f \"$TINTY_THEME_FILE_PATH\" ~/.config/i3/colors && printf \"\\nclient.focused          \\$base0D \\$base00 \\$base05 \\$base0D \\$base0D\\nclient.unfocused        \\$base01 \\$base00 \\$base03 \\$base01 \\$base01\\nclient.urgent           \\$base08 \\$base08 \\$base00 \\$base08 \\$base08\\n\" >> ~/.config/i3/colors && i3-msg reload 2>/dev/null || true"
 supported-systems = ["base16"]
+
+# Kitty terminal (kitty.conf globincludes colors.conf). set-colors over each
+# instance's remote-control socket repaints instantly; SIGUSR1 (full config
+# reload) is the fallback for instances started before listen_on existed.
+[[items]]
+name = "tinted-kitty"
+path = "https://github.com/tinted-theming/tinted-kitty"
+themes-dir = "colors-256"
+hook = "cp -f \"$TINTY_THEME_FILE_PATH\" ~/.config/kitty/colors.conf; for p in $(pgrep -x kitty); do grep -q runpy /proc/$p/cmdline && continue; kitten @ --to unix:@kitty-$p set-colors -a -c ~/.config/kitty/colors.conf 2>/dev/null || kill -USR1 $p; done; true"
+supported-systems = ["base16", "base24"]
