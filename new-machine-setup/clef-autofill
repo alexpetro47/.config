@@ -1,0 +1,165 @@
+#!/usr/bin/env -S PATH=${HOME}/.local/bin:${PATH} uv run --quiet --script
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["httpx>=0.28,<1"]
+# ///
+"""Native-messaging host for the Clef autofill Brave extension (~/.config/clef-autofill/extension).
+
+Alt+Shift+A in Brave: the extension sends the page's empty fields here; Cloudflare Clef (Decisions API on
+OpenRouter) matches each one to an AUTOFILL_* key from bws, and the values go back to the extension to type
+in. Clef sees field labels and key names, never the values. Nothing is submitted; checkboxes, radios and
+passwords are left alone.
+
+    clef-autofill --dry-run < scan.json   print field -> key matches (no values) for a saved scan
+
+Profile keys: any bws secret named AUTOFILL_<FIELD>, e.g. AUTOFILL_FIRST_NAME, AUTOFILL_EMAIL,
+AUTOFILL_PHONE (national digits, no country code), AUTOFILL_PHONE_E164, AUTOFILL_ADDRESS_LINE1.
+"""
+
+import json
+import os
+import struct
+import subprocess
+import sys
+from pathlib import Path
+
+LOG = Path.home() / ".cache/clef-autofill.log"
+BWS_PROJECT = "db5c57dc-e37c-4e9e-9f20-b4bd0069b6c4"  # laptop
+MODEL = os.environ.get("CLEF_AUTOFILL_MODEL", "cloudflare/clef")  # flash misfiled apt->city, state->zip in testing
+MIN_PROB = float(os.environ.get("CLEF_AUTOFILL_MIN_PROB", "0.5"))
+PREFIX = "AUTOFILL_"
+FAKE = Path.home() / ".cache/clef-autofill/fake-profile.json"  # while this exists, its values replace bws's
+
+# Richer option descriptions for common keys; any other AUTOFILL_* key is described by its name.
+DESCRIBE = {
+    "FIRST_NAME": "First / given name",
+    "LAST_NAME": "Last / family / surname",
+    "FULL_NAME": "Full name (first and last together) in a single field",
+    "EMAIL": "Email address",
+    "PHONE": "Phone number without the country code; use when the country code is a separate field or the form is domestic",
+    "PHONE_E164": "Full international phone number including +country code, in one field",
+    "COMPANY": "Company / organization / business name",
+    "JOB_TITLE": "Job title / role",
+    "WEBSITE": "Website / company URL",
+    "ADDRESS_LINE1": "Street address, first line",
+    "ADDRESS_LINE2": "Apartment / suite / unit, second address line",
+    "CITY": "City / town",
+    "STATE": "State / province / region",
+    "ZIP": "ZIP / postal code",
+    "COUNTRY": "Country",
+    "BIRTHDAY": "Date of birth",
+    "LINKEDIN": "LinkedIn profile URL",
+    "GITHUB": "GitHub profile URL or username",
+    "USERNAME": "Username / handle (not an email)",
+}
+
+
+def log(msg):
+    with LOG.open("a") as f:
+        f.write(msg + "\n")
+
+
+def notify(msg, urgent=False):
+    subprocess.run(["notify-send", "-a", "clef-autofill", *(["-u", "critical"] if urgent else []),
+                    "Clef autofill", msg], check=False)
+
+
+def load_secrets():
+    """OPENROUTER_API_KEY and every AUTOFILL_* value from bws; nothing else is kept."""
+    env = dict(os.environ)
+    if not env.get("BWS_ACCESS_TOKEN"):
+        env["BWS_ACCESS_TOKEN"] = subprocess.run(["secret-tool", "lookup", "service", "bws", "account", "default"],
+                                                 capture_output=True, text=True).stdout.strip()
+    bws = str(Path.home() / ".cargo/bin/bws") if Path.home().joinpath(".cargo/bin/bws").exists() else "bws"
+    out = subprocess.run([bws, "secret", "list", BWS_PROJECT, "-o", "json"], capture_output=True, text=True, env=env)
+    if out.returncode:
+        raise RuntimeError("bws failed — is the keyring token still valid?")
+    secrets = json.loads(out.stdout)
+    key = next((s["value"] for s in secrets if s["key"] == "OPENROUTER_API_KEY"), None)
+    profile = {s["key"][len(PREFIX):]: s["value"] for s in secrets if s["key"].startswith(PREFIX) and s["value"]}
+    del secrets, out
+    return key, profile
+
+
+def decide(api_key, page, all_fields, keys):
+    """One Clef `choice` per empty field over the profile key names (plus `none`). Returns {field index: key}.
+
+    Filled fields stay in the state as context (a "+1" country select next to a phone box). Fields are
+    keyed by page index (`fields.f3`): with a list, Clef miscounted positions and put the email in the phone."""
+    import httpx
+
+    criteria = {k: DESCRIBE.get(k, k.replace("_", " ").lower()) for k in keys}
+    criteria["none"] = "None of the profile entries belongs in this field (e.g. search box, message, code, or unrelated)"
+    desc = {f"f{f['index']}": {**{k: v for k, v in f.items() if k not in ("index", "empty")},
+             **({} if f.get("empty") else {"already_filled": True})} for f in all_fields}
+    fields = [f for f in all_fields if f.get("empty")]
+    answers = {}
+    for start in range(0, len(fields), 64):
+        qs = {f"f{f['index']}": {
+            "type": "choice",
+            "instructions": f"Which of my saved profile entries should be typed into `fields.f{f["index"]}` (a form "
+                            "field on `page`)? Judge by its label, placeholder, name, autocomplete and neighbouring "
+                            "fields. Pick `none` if it isn't asking for this personal info.",
+            "criteria": criteria,
+        } for f in fields[start:start + 64]}
+        r = httpx.post("https://openrouter.ai/api/alpha/decisions", timeout=30,
+                       headers={"Authorization": f"Bearer {api_key}"},
+                       json={"model": MODEL, "state": {"page": page, "fields": desc}, "questions": qs})
+        r.raise_for_status()
+        answers.update(r.json()["answers"])
+    plan = {}
+    for f in fields:
+        a = answers.get(f"f{f['index']}", {})
+        k = a.get("choice")
+        p = a.get("probabilities", {}).get(k, 0)
+        log(f"  {json.dumps({x: f[x] for x in f if x not in ('index', 'empty')})} -> {k} p={p:.2f}")
+        if k and k != "none" and p >= MIN_PROB:
+            plan[f["index"]] = k
+    return plan
+
+
+def handle(scan, dry_run=False):
+    page, empty = scan["page"], [f for f in scan["fields"] if f.get("empty")]
+    log(f"{page.get('title')} — {page.get('url')}: {len(empty)} empty of {len(scan['fields'])} field(s)")
+    if not empty:
+        return {"fills": [], "message": "No empty fields on this page."}
+    api_key, profile = load_secrets()
+    if FAKE.exists():  # test mode: fake values instead of the AUTOFILL_* secrets
+        profile = json.loads(FAKE.read_text())
+    if not api_key:
+        return {"error": "OPENROUTER_API_KEY not in bws."}
+    if dry_run and not profile:
+        profile = dict.fromkeys(DESCRIBE, "")  # key names only, to preview matching
+    if not profile:
+        return {"error": "No AUTOFILL_* secrets in bws yet (e.g. AUTOFILL_FIRST_NAME, AUTOFILL_EMAIL)."}
+    plan = decide(api_key, page, scan["fields"], sorted(profile))
+    if dry_run:
+        return {"plan": {str(i): k for i, k in plan.items()}}
+    return {"fills": [{"index": i, "name": k.replace("_", " ").lower(), "value": profile[k]} for i, k in plan.items()],
+            "message": "Nothing on this page matched your profile."}
+
+
+def native():
+    """One message per run: a page scan (reply with fills) or the extension's report of what it filled."""
+    raw = sys.stdin.buffer.read(4)
+    msg = json.loads(sys.stdin.buffer.read(struct.unpack("<I", raw)[0]))
+    if "report" in msg:
+        log(f"  result: {msg['report']}")
+        notify(msg["report"], urgent=msg.get("error", False))
+        reply = {}
+    else:
+        try:
+            reply = handle(msg)
+        except Exception as e:
+            log(f"error: {e!r}")
+            reply = {"error": f"{type(e).__name__}: {e}"}
+    body = json.dumps(reply).encode()
+    sys.stdout.buffer.write(struct.pack("<I", len(body)) + body)
+    sys.stdout.buffer.flush()
+
+
+if __name__ == "__main__":
+    if "--dry-run" in sys.argv:
+        print(json.dumps(handle(json.load(sys.stdin), dry_run=True), indent=1))
+    else:
+        native()  # Brave passes the caller's origin as argv[1]

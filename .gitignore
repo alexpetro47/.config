@@ -224,6 +224,10 @@ new-machine-setup/*
 !new-machine-setup/vpn-sync
 !new-machine-setup/airpods-toggle
 !new-machine-setup/picom-toggle
+!new-machine-setup/perf-mode-toggle
+!new-machine-setup/perf-mode-apply
+!new-machine-setup/gaming-setup.sh
+!new-machine-setup/cp2077-settings
 !new-machine-setup/audio-stems-toggle
 !new-machine-setup/sdcard-toggle
 !new-machine-setup/chord-analyze-popup
@@ -364,3 +368,10 @@ systemd/user/*
 !systemd/user/backup-reminder.service
 !systemd/user/backup-reminder.timer
 !systemd/user/kdeconnect.service
+
+# Clef autofill (Brave extension + native-messaging host; host manifest written by link-configs.sh)
+!clef-autofill/
+!clef-autofill/extension/
+!clef-autofill/extension/manifest.json
+!clef-autofill/extension/background.js
+!new-machine-setup/clef-autofill

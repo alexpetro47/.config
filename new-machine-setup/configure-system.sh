@@ -59,6 +59,11 @@ systemctl --user daemon-reload
 systemctl --user enable --now backup-reminder.timer 2>/dev/null || log "WARN: backup-reminder.timer enable failed"
 log "Backup reminder timer enabled"
 
+# KDE Connect daemon. Runs under systemd rather than an i3 exec line so it comes back
+# on its own when it dies or loses the session bus (Restart=always).
+systemctl --user enable --now kdeconnect.service 2>/dev/null || log "WARN: kdeconnect.service enable failed"
+log "KDE Connect daemon enabled"
+
 # TLP power management - optimized for unplugged laptop use
 if command -v tlp &>/dev/null; then
     log "Enabling TLP power management..."
@@ -131,10 +136,11 @@ if command -v brave-browser &>/dev/null; then
     "instagram.com",
     "pinterest.com",
     "pin.it",
-    "youtube.com",
-    "youtu.be",
     "x.com",
-    "twitter.com"
+    "twitter.com",
+    "pornhub.com",
+    "dirtyship.com",
+    "chaturbate.com"
   ]
 }'
     if [ "$(cat "$BRAVE_POLICY" 2>/dev/null)" != "$BRAVE_POLICY_JSON" ]; then
@@ -145,6 +151,14 @@ if command -v brave-browser &>/dev/null; then
         log "Brave site blocklist already set"
     fi
 fi
+
+# =============================================================================
+# FILE PICKER: SHOW HIDDEN FILES
+# =============================================================================
+# GTK3 and GTK4 keep separate settings; browsers' Open dialogs use the GTK4 one.
+gsettings set org.gtk.Settings.FileChooser show-hidden true
+gsettings set org.gtk.gtk4.Settings.FileChooser show-hidden true
+log "File picker shows hidden files (GTK3 + GTK4)"
 
 # =============================================================================
 # BROWSER COLOR SCHEME → DEVICE

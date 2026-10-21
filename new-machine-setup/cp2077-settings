@@ -1,0 +1,42 @@
+#!/bin/bash
+# cp2077-settings - Apply tuned Cyberpunk 2077 graphics settings (Radeon 890M iGPU, 1920x1200 60Hz)
+# Max fps on reflections/volumetrics/shadows, cheap-but-visible settings kept up, FSR 3 + frame gen.
+# The game rewrites UserSettings.json on exit, so this waits for it to close. Backs up first.
+# Usage: cp2077-settings [--if-installed]   (--if-installed: exit quietly if no game prefix yet)
+
+U="$HOME/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/compatdata/1091500/pfx/drive_c/users/steamuser/AppData/Local/CD Projekt Red/Cyberpunk 2077/UserSettings.json"
+
+if [ ! -f "$U" ]; then
+    [ "$1" = --if-installed ] && { echo "Cyberpunk not launched yet - run cp2077-settings after first launch"; exit 0; }
+    echo "No UserSettings.json - launch the game once first" >&2; exit 1
+fi
+
+if pgrep -f 'Cyberpunk2077\.exe' >/dev/null; then
+    echo "Cyberpunk running - will apply when it exits"
+    while pgrep -f 'Cyberpunk2077\.exe' >/dev/null; do sleep 2; done
+    sleep 3
+fi
+
+cp "$U" "$U.bak-$(date +%Y%m%d-%H%M%S)"
+jq '
+  def set(n; v): (.data[].options[] | select(.name == n) | .value) = v;
+  set("QuickPresets"; "Custom")
+  | set("ResolutionScaling"; "FSR3") | set("FSR3"; "Balanced") | set("FSR3_Sharpness"; 0.6)
+  | set("FrameGeneration"; "FSR3") | set("FSR3_FrameGeneration"; true)
+  | set("DynamicResolutionScaling"; false)
+  | set("TextureQuality"; "High")
+  | set("WindowMode"; "Fullscreen") | set("MaximumFPS_OnOff"; false)
+  | set("ContactShadows"; true) | set("FacialTangentUpdates"; true)
+  | set("ShadowMeshQuality"; "Low") | set("LocalShadowsQuality"; "Low")
+  | set("CascadedShadowsRange"; "Low") | set("CascadedShadowsResolution"; "Low")
+  | set("DistantShadowsResolution"; "High")
+  | set("VolumetricFogResolution"; "Low") | set("VolumetricCloudsQuality"; "Off")
+  | set("MaxDynamicDecals"; "Medium") | set("ScreenSpaceReflectionsQuality"; "Off")
+  | set("SubsurfaceScatteringQuality"; "Medium") | set("AmbientOcclusion"; "Medium")
+  | set("ColorPrecision"; "High") | set("GlobaIlluminationRange"; "High")
+  | set("MirrorQuality"; "Low") | set("LODPreset"; "High") | set("Anisotropy"; 16)
+  | set("CrowdDensity"; "Low")
+  | set("MotionBlur"; "Off") | set("DepthOfField"; false) | set("LensFlares"; false)
+  | set("Vignette"; false) | set("FilmGrain"; false) | set("ChromaticAberration"; false)
+' "$U" > "$U.new" && mv "$U.new" "$U" && notify-send "Cyberpunk" "Tuned settings applied" 2>/dev/null
+echo "Applied. Backup: $U.bak-*"

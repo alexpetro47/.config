@@ -34,6 +34,7 @@ done
 
 section "Services"
 systemctl is-enabled docker &>/dev/null && pass "docker" || fail "docker"
+systemctl --user is-active kdeconnect.service &>/dev/null && pass "kdeconnect.service" || fail "kdeconnect.service"
 
 section "Post-reboot"
 [[ "$SHELL" == */zsh ]] && pass "shell=zsh" || warn "shell=zsh"

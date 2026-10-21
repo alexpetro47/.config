@@ -38,3 +38,4 @@ image/jpeg=gimp.desktop;
 video/mp4=mpv.desktop;com.brave.Browser.desktop;
 image/heif=okularApplication_kimgio.desktop;
 image/png=org.gnome.gThumb.desktop;org.gnome.eog.desktop;gimp.desktop;display-im6.q16.desktop;feh.desktop;
+text/markdown=libreoffice-writer.desktop;okularApplication_txt.desktop;

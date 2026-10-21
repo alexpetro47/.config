@@ -39,9 +39,11 @@ Scripts are designed for safe re-runs:
 | `Alt+Shift+b` | Toggle polybar |
 | `Alt+Ctrl+t` | Toggle light/dark theme (`toggle-theme`: tinty → kitty/tmux/zsh/polybar/i3, GTK + portal color-scheme → Brave/Chrome set to "Device", Claude Code `theme`) |
 | `Super+Ctrl+v` | Toggle screen recording (zenity setup: full screen/region via slop, fps, optional system audio; ffmpeg → ~/Downloads, polybar dot while recording) |
-| `Alt+Shift+a` | Toggle lid suspend (stay awake when closed) |
+| `Alt+l` | Toggle lid suspend (stay awake when closed) |
+| `Alt+Shift+a` (Brave) | Clef autofill: Brave extension `clef-autofill/extension` sends the page's empty fields to native host `new-machine-setup/clef-autofill`; Cloudflare Clef matches each to an `AUTOFILL_*` bws key name (never sees values), host returns values, extension types them. Never submits, skips checkboxes/passwords. `~/.cache/clef-autofill/fake-profile.json` overrides bws for testing; log `~/.cache/clef-autofill.log` |
 | `Alt+i` | Toggle VPN (Tailscale exit node through DO droplet) |
 | `Alt+Shift+p` | Toggle picom compositor |
+| `Alt+Shift+o` | Toggle perf mode (gaming) vs work mode (battery): `platform_profile` + CPU EPP via root helper `/usr/local/sbin/perf-mode-apply` (sudoers NOPASSWD, installed by `gaming-setup.sh` / `GAMING=1`), picom off in perf. Live, no reboot. Polybar speedometer while on. TLP re-applies EPP on AC plug/unplug |
 | `Alt+Shift+s` | Toggle audio recording → split into 4 stems (Demucs) |
 | `Alt+Shift+e` | Toggle real-time note/chord detector popup (taps default sink) |
 | `Alt+Shift+m` | Toggle cava audio spectrum visualizer popup |
@@ -49,6 +51,7 @@ Scripts are designed for safe re-runs:
 | `Alt+Shift+x` | Capture stream → BPM/key/chord-progression/structure report popup (saved to ~/Music/analysis, opens Thunar) |
 | `Alt+Shift+g` | Guitar tab popup (record a riff off the interface → guitar-tabber transcribes it into your library and opens the local web player showing notation + tab with a cursor that follows the recorded audio; Enter stops recording, keybind again to cancel) |
 | `Alt+p` | Toggle desktop sprite (animated Ryu wanders/idles/attacks/somersaults plus tatsu, shoryuken, hadouken, taunt, dash, moonwalk on screen edges; superhero landing when dropped from height; drag to any edge, double-click to attack, right-click to close) |
+| `Alt+Ctrl+r` | Toggle window ring (two purple comets run around the focused i3 window's edge over a dim ring; click-through PySide6 overlay following i3 IPC, `window-ring/ring.py`; autostarts with i3) |
 | `Alt+Shift+h` | Toggle screen highlighter (draw over the screen with a thick green marker via gromit-mpx; right-click erases, toggle again clears and exits) |
 | `Alt+Shift+j` | Start / hang up a spoken voice-chat call with a Claude agent (push-to-talk: speak, then press to send a turn; Groq Whisper STT → headless `claude -p` streaming → sentence-chunked Kokoro TTS, espeak-ng fallback; conversation remembered across turns via `--resume`, reset each call; polybar cycles mic/hourglass/speaker) |
 | `Alt+Shift+k` / AirPod double-press | Send the current turn (`XF86AudioNext` sends while a call is engaged, else falls through to Spotify next-track) |

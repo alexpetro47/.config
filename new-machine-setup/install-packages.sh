@@ -5,6 +5,7 @@
 #
 # Options (set before running or export):
 #   SKIP_LATEX=1         Skip texlive packages (~500MB) (default: 0)
+#   GAMING=1             Also run gaming-setup.sh (Steam, gamemode, perf mode, ntsync) (default: 0)
 #
 # Example: SKIP_LATEX=1 ./install-packages.sh  # skip large LaTeX packages
 #
@@ -17,6 +18,7 @@ installed() { command -v "$1" &>/dev/null; }
 # OPTIONS
 # =============================================================================
 SKIP_LATEX="${SKIP_LATEX:-0}"
+GAMING="${GAMING:-0}"
 
 # =============================================================================
 # APT PACKAGES
@@ -80,6 +82,11 @@ sudo apt install -y \
     libsecret-tools \
     libheif-examples \
     kdeconnect \
+    libpcap-dev \
+    libev-dev \
+    libnl-3-dev \
+    libnl-genl-3-dev \
+    libnl-route-3-dev \
 
 # =============================================================================
 # BROWSERS
@@ -554,6 +561,24 @@ else
 fi
 
 # =============================================================================
+# OPENDROP (AirDrop for Linux) + OWL (Apple Wireless Direct Link daemon)
+# =============================================================================
+# owl puts the wifi card into monitor mode while it runs - see additional-installs.md
+if ! installed owl; then
+    log "Building OWL (AWDL)..."
+    rm -rf /tmp/owl
+    git clone --recursive https://github.com/seemoo-lab/owl.git /tmp/owl
+    cmake -S /tmp/owl -B /tmp/owl/build
+    make -C /tmp/owl/build
+    sudo make -C /tmp/owl/build install
+    rm -rf /tmp/owl
+else
+    log "OWL already installed"
+fi
+# setuptools<81: opendrop still imports pkg_resources
+uv tool install opendrop --with "setuptools<81" || true
+
+# =============================================================================
 # OBSIDIAN (snap)
 # =============================================================================
 if ! installed obsidian; then
@@ -691,6 +716,15 @@ EOF
     chmod +x "$HOME/.local/bin/reaper"
 else
     log "Reaper wrapper already exists"
+fi
+
+# =============================================================================
+# GAMING (opt-in: GAMING=1)
+# =============================================================================
+if [ "$GAMING" = "1" ]; then
+    "$(dirname "$0")/gaming-setup.sh"
+else
+    log "Skipping gaming setup (enable with GAMING=1)"
 fi
 
 # =============================================================================

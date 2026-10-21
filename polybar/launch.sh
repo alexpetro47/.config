@@ -9,3 +9,4 @@ voice-dictation sync 2>/dev/null &
 voice-chat sync 2>/dev/null &
 standup-record sync 2>/dev/null &
 lid-suspend-sync 2>/dev/null &
+perf-mode-toggle sync 2>/dev/null &

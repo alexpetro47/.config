@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Clef autofill",
+  "version": "1.0",
+  "description": "Fill the form on this page from AUTOFILL_* secrets in bws, matched by Cloudflare Clef.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4eqnsXGdfUWuQbJfAl9tuO1WNIr6GE7ppu6hfLPGhqPu9POV+aWfF6UAmlCZb5ozGk443G1VuBNgKkZDhdwJ4MVllX2/A7W/foqq1rgHT4b8M3SRQhg5v3CgNMHMh/dsOTS4ARhRua6ecIjv6IrUOQncQ2WQysVw8pEUV5F+1lNPOZ4T9s0Te6kl+pJgxEzMTHZ+EKs8PPrDLmefQNxhBmAht8f8f+iQJdrxkHlvpFq4lWB3i1cOvFm3FCMeaTz4panyBXEm9y2jOLRpqHKbuxeVcC2w6VL46snE/mZE444NtRytYVCVkVDflBCuM6gsmDjOcGTnZjRHXRkv7jxzwQIDAQAB",
+  "permissions": ["activeTab", "scripting", "nativeMessaging"],
+  "background": {"service_worker": "background.js"},
+  "action": {"default_title": "Clef autofill (Alt+Shift+A)"},
+  "commands": {
+    "_execute_action": {"suggested_key": {"default": "Alt+Shift+A"}, "description": "Autofill this page"}
+  }
+}

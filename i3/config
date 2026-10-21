@@ -124,6 +124,9 @@ bindsym $mod+i exec --no-startup-id ~/.local/bin/vpn-toggle
 # Picom compositor toggle
 bindsym $mod+Shift+p exec --no-startup-id ~/.local/bin/picom-toggle
 
+# Perf mode toggle (work/battery vs gaming: platform profile + CPU EPP, picom off)
+bindsym $mod+Shift+o exec --no-startup-id ~/.local/bin/perf-mode-toggle
+
 # Audio stem separation (record system audio, then split into vocals/drums/bass/other)
 # bindsym $mod+Shift+s exec --no-startup-id ~/.local/bin/audio-stems-toggle
 
@@ -171,7 +174,7 @@ exec --no-startup-id ~/.xsessionrc
 # exec --no-startup-id xcompmgr -C
 exec --no-startup-id feh --bg-fill ~/.config/assets/wallpapers/valentine-dexheimer-wzTSUHBRVJU-unsplash.jpg
 exec --no-startup-id greenclip daemon
-exec --no-startup-id /usr/lib/x86_64-linux-gnu/libexec/kdeconnectd
+# exec --no-startup-id ~/.local/bin/window-ring-toggle --start
 exec_always --no-startup-id $HOME/.config/polybar/launch.sh
 exec_always --no-startup-id "sleep 1 && ~/.local/bin/lid-suspend-sync"
 exec_always --no-startup-id "sleep 1 && ~/.local/bin/vpn-sync"
@@ -220,6 +223,9 @@ for_window [class="mpv"] floating enable, resize set 480 320, move position cent
 # Desktop sprite toggle (animated on-screen character: wanders/idles/attacks/spins)
 bindsym $mod+p exec --no-startup-id ~/.local/bin/sprite-toggle
 
+# Window ring toggle (purple light running around the focused window)
+bindsym $mod+ctrl+r exec --no-startup-id ~/.local/bin/window-ring-toggle
+
 # Desktop sprite window: float freely, follow across workspaces, no border
 for_window [class="desktop-sprite"] floating enable, sticky enable, border none
 
@@ -229,3 +235,5 @@ assign [class="Google-chrome"] 7
 # Playwright MCP browser (launched with --class=PlaywrightMCP) lands on ws7, no focus steal
 assign [class="PlaywrightMCP"] 7
 
+# browse-clef dedicated Brave (launched with --class=browse-clef) lands on ws8, no focus steal
+assign [class="browse-clef"] 8

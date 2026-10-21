@@ -1,0 +1,25 @@
+#!/bin/bash
+# perf-mode-toggle - Switch between work (battery-friendly) and perf (gaming) power modes
+# Live switch, no reboot: platform profile + CPU EPP via perf-mode-apply, picom off in perf.
+# State is read from sysfs, so the polybar icon can't drift from reality.
+# Usage: perf-mode-toggle [sync]
+
+current=$(cat /sys/firmware/acpi/platform_profile)
+
+if [ "$1" = sync ]; then
+    [ "$current" = performance ] && polybar-msg action perfmode hook 1 || polybar-msg action perfmode hook 0
+    exit 0
+fi >/dev/null 2>&1
+
+if [ "$current" = performance ]; then
+    sudo -n /usr/local/sbin/perf-mode-apply work || { notify-send -u critical "Perf Mode" "perf-mode-apply failed - run gaming-setup.sh"; exit 1; }
+    pgrep -x picom >/dev/null || picom --daemon
+    notify-send -u low "Perf Mode" "OFF - work mode ($(cat /sys/firmware/acpi/platform_profile))"
+    polybar-msg action perfmode hook 0 >/dev/null 2>&1
+else
+    sudo -n /usr/local/sbin/perf-mode-apply perf || { notify-send -u critical "Perf Mode" "perf-mode-apply failed - run gaming-setup.sh"; exit 1; }
+    pkill -x picom
+    [ "$(cat /sys/class/power_supply/AC/online 2>/dev/null)" = 1 ] || notify-send -u normal "Perf Mode" "On battery - plug in for full iGPU power"
+    notify-send -u low "Perf Mode" "ON - performance profile, picom off"
+    polybar-msg action perfmode hook 1 >/dev/null 2>&1
+fi

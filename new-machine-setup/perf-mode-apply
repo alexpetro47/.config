@@ -1,0 +1,26 @@
+#!/bin/bash
+# perf-mode-apply - root half of perf-mode-toggle: write the power sysfs knobs
+# Installed root-owned to /usr/local/sbin by gaming-setup.sh (sudoers NOPASSWD),
+# so edits here only take effect after re-running gaming-setup.sh.
+# Usage: perf-mode-apply perf|work
+
+set -e
+epp() { for f in /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference; do echo "$1" > "$f"; done; }
+
+case "$1" in
+    perf)
+        echo performance > /sys/firmware/acpi/platform_profile
+        epp performance
+        ;;
+    work)
+        # Mirrors the TLP EPP values in configure-system.sh
+        if [ "$(cat /sys/class/power_supply/AC/online 2>/dev/null)" = 1 ]; then
+            echo balanced > /sys/firmware/acpi/platform_profile
+            epp balance_performance
+        else
+            echo low-power > /sys/firmware/acpi/platform_profile
+            epp power
+        fi
+        ;;
+    *) echo "usage: $0 perf|work" >&2; exit 1 ;;
+esac

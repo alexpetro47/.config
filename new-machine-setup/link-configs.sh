@@ -189,6 +189,14 @@ if [ -f "$CONFIG_DIR/new-machine-setup/picom-toggle" ]; then
     _link_config "$CONFIG_DIR/new-machine-setup/picom-toggle" "$HOME/.local/bin/picom-toggle"
 fi
 
+# Perf mode toggle (work/battery vs gaming power profile; root helper installed by gaming-setup.sh)
+if [ -f "$CONFIG_DIR/new-machine-setup/perf-mode-toggle" ]; then
+    _link_config "$CONFIG_DIR/new-machine-setup/perf-mode-toggle" "$HOME/.local/bin/perf-mode-toggle"
+fi
+if [ -f "$CONFIG_DIR/new-machine-setup/cp2077-settings" ]; then
+    _link_config "$CONFIG_DIR/new-machine-setup/cp2077-settings" "$HOME/.local/bin/cp2077-settings"
+fi
+
 # Audio stem separation toggle (record system audio -> Demucs 4 stems)
 if [ -f "$CONFIG_DIR/new-machine-setup/audio-stems-toggle" ]; then
     _link_config "$CONFIG_DIR/new-machine-setup/audio-stems-toggle" "$HOME/.local/bin/audio-stems-toggle"
@@ -222,6 +230,11 @@ fi
 # Desktop sprite toggle (animated on-screen character)
 if [ -f "$CONFIG_DIR/new-machine-setup/sprite-toggle" ]; then
     _link_config "$CONFIG_DIR/new-machine-setup/sprite-toggle" "$HOME/.local/bin/sprite-toggle"
+fi
+
+# Window ring toggle (purple light running around the focused i3 window)
+if [ -f "$CONFIG_DIR/new-machine-setup/window-ring-toggle" ]; then
+    _link_config "$CONFIG_DIR/new-machine-setup/window-ring-toggle" "$HOME/.local/bin/window-ring-toggle"
 fi
 
 # Black hole break reminder toggle (Ghostty shader terminal)
@@ -263,6 +276,18 @@ mkdir -p "$(dirname "$cap_recordings")"
 ln -sfn "$HOME/Downloads" "$cap_recordings"
 log "Linked: $cap_recordings -> $HOME/Downloads"
 
+
+# =============================================================================
+# CLEF AUTOFILL (Brave native-messaging host)
+# =============================================================================
+# Written, not symlinked: Brave needs an absolute "path". The extension itself is loaded once by hand
+# (brave://extensions → Load unpacked → ~/.config/clef-autofill/extension); its manifest "key" pins the ID.
+CLEF_HOST_DIR="$HOME/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts"
+mkdir -p "$CLEF_HOST_DIR"
+cat > "$CLEF_HOST_DIR/com.alexpetro.clef_autofill.json" <<EOF_HOST
+{"name": "com.alexpetro.clef_autofill", "description": "Clef autofill host", "path": "$CONFIG_DIR/new-machine-setup/clef-autofill", "type": "stdio", "allowed_origins": ["chrome-extension://egaljlidplkjfoifnlpghnnhcjicfbhk/"]}
+EOF_HOST
+log "Clef autofill native host registered"
 
 # =============================================================================
 # DESKTOP ENTRIES

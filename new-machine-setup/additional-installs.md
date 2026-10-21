@@ -10,18 +10,62 @@ sudo tailscale up
 ```
 
 kdeconnect pairing - one-time per machine (pairing keys live untracked in ~/.config/kdeconnect).
-Daemon is autostarted by i3 config. Same Wi-Fi, open KDE Connect app on the phone (iOS only
-announces while foregrounded), then:
+Daemon runs as `kdeconnect.service` (systemd --user, `Restart=always`), enabled by
+configure-system.sh. Same Wi-Fi, open KDE Connect app on the phone (iOS only announces
+while foregrounded), then:
 ```
 kdeconnect-cli --list-available   # get device id
 kdeconnect-cli --pair -d <id>     # accept prompt on phone
 ```
 If discovery fails (AP client isolation), use "Add device by IP" in the iOS app.
 
+Incoming files -> ~/Downloads. The share plugin's destination is per-device config, and the
+device dir is named after the phone's id, so it is untracked (public repo) and has to be set
+once per newly paired device:
+```
+for d in ~/.config/kdeconnect/*/; do
+  mkdir -p "$d/kdeconnect_share"
+  printf '[General]\nincoming_path=%s/Downloads\n' "$HOME" > "$d/kdeconnect_share/config"
+done
+systemctl --user restart kdeconnect.service
+```
+KDE Connect's own default is the XDG download dir, which is already ~/Downloads - this just
+pins it so it cannot drift with user-dirs.dirs.
+
+opendrop - AirDrop from Linux (installed by install-packages.sh: `owl` built from source,
+`opendrop` via uv). No iPhone app: the phone uses its built-in AirDrop, set to
+Settings > General > AirDrop > "Everyone for 10 Minutes" (opendrop can't pass Contacts Only).
+owl puts the only wifi card into monitor mode, so normal Wi-Fi drops while it runs:
+```
+sudo owl -i wlp194s0            # creates awdl0; leave running, Ctrl+C to restore wifi
+opendrop receive                # iPhone -> laptop, files land in cwd
+opendrop find                   # list nearby devices (index, name)
+opendrop send -r 0 -f file.jpg  # laptop -> iPhone by index from find
+```
+Upstream is unmaintained (last release 2021); support on recent iOS and on the MT7925
+card (needs monitor mode + frame injection) is not guaranteed. KDE Connect is the fallback.
+
 ## Desktop
 
 picom - compositor for transparency/shadows (disabled - causes idle crashes)
 `sudo apt install picom`
+
+Clef autofill Brave extension (Alt+Shift+A) - one-time manual load; `link-configs.sh` registers its native host
+1. `brave://extensions` → Developer mode → Load unpacked → `~/.config/clef-autofill/extension` (Ctrl+L to type the path)
+2. `brave://extensions/shortcuts` → Clef autofill → set Alt+Shift+A if it isn't already
+3. Profile values: bws secrets named `AUTOFILL_<FIELD>` (e.g. `AUTOFILL_EMAIL`, `AUTOFILL_PHONE`)
+
+## Gaming
+
+Opt-in: `GAMING=1 ./install-packages.sh`, or `./gaming-setup.sh` alone. Installs gamemode, Flatpak Steam + ProtonUp-Qt + MangoHud layer, the perf-mode root helper (`Alt+Shift+o`), and the ntsync module.
+
+Manual (Steam stores these per game, not scriptable while Steam runs):
+1. Cyberpunk 2077 → Properties → Compatibility → Proton Experimental
+2. Launch Options:
+   `MANGOHUD=1 MANGOHUD_CONFIG=fps_limit=60,no_display PROTON_USE_NTSYNC=1 gamemoderun %command% --launcher-skip -skipStartScreen`
+   - `fps_limit=60` stands in for VSync, which the game locks while FSR 3 frame gen is on
+3. Launch once (creates the prefix), quit, run `cp2077-settings` (FSR 3 Balanced + frame gen, tuned for the Radeon 890M)
+4. Before playing: `Alt+Shift+o` (perf mode), plugged in; close Brave / idle Claude sessions, `docker pause` agentic_os containers
 
 ## Windows on External SSD
 

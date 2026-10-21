@@ -1,0 +1,19 @@
+[Unit]
+Description=KDE Connect daemon
+# No After= here. default.target Wants this unit, so ordering against it would be a
+# cycle; graphical-session.target is never started under i3, so it is a dead anchor.
+# systemd --user already carries DISPLAY/XAUTHORITY/DBUS_SESSION_BUS_ADDRESS at login.
+#
+# Never stop retrying. The daemon is a Qt app: if the unit starts before X is up it
+# dies immediately, and the default 5-starts-in-10s allowance would give up for good.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+# Arch-specific libexec path - the same one /usr/share/dbus-1/services/org.kde.kdeconnect.service uses.
+ExecStart=/usr/lib/x86_64-linux-gnu/libexec/kdeconnectd
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
