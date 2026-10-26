@@ -1,0 +1,48 @@
+#!/bin/bash
+#
+# Nags when the Bitwarden backup goes stale. Run daily by backup-reminder.timer.
+#
+# Daily rather than monthly on purpose: `backup --bitwarden` needs a typed passphrase, so it
+# can never run unattended. A once-a-month popup dismissed at a busy moment is gone for a
+# month; this one comes back tomorrow and goes quiet on its own once a backup exists.
+#
+set -euo pipefail
+
+BACKUP_DIR="$HOME/.local/share/bitwarden-backup"
+STALE_DAYS=30
+
+newest=$(find "$BACKUP_DIR" -maxdepth 1 -type f \
+    \( -name 'vault-*.json' -o -name 'secrets-*.json.gpg' \) \
+    -printf '%T@\n' 2>/dev/null | sort -rn | head -1)
+
+if [[ -n "$newest" ]]; then
+    age_days=$(( ($(date +%s) - ${newest%.*}) / 86400 ))
+    (( age_days >= STALE_DAYS )) || exit 0
+    body="Last backup was $age_days days ago. Vault + machine secrets, needs your passphrase."
+else
+    body="No backup has ever run. Vault + machine secrets, needs your passphrase."
+fi
+
+# -A implies --wait, so this blocks until clicked or expired; -t bounds how long the oneshot
+# service stays alive. Ignoring it costs nothing - the timer asks again tomorrow.
+#
+# Exactly one action, on purpose. dunst invokes a single action directly, in-process, so it
+# lands before the binding's `close_current`; two actions would spawn the dmenu picker and
+# the close would race the selection, returning no action at all. Needs
+# `mouse_left_click = do_action` in dunstrc - with the stock `close_current` alone a click
+# only dismisses and the backup silently never runs.
+action=$(notify-send -a "Backup" -i dialog-password -u critical -t 60000 \
+    -A default="Back up now" \
+    "Bitwarden backup is overdue" "$body")
+
+[[ "$action" == "default" ]] || exit 0
+
+# No terminal: backup-bitwarden has no TTY here, so it asks for the master password and the
+# passphrase through zenity password boxes and runs headless.
+if "$HOME/.local/bin/backup-bitwarden" </dev/null; then
+    notify-send -a "Backup" -i dialog-information -t 8000 \
+        "Backup complete" "Vault + machine secrets synced to Drive."
+else
+    notify-send -a "Backup" -i dialog-error -u critical -t 0 \
+        "Backup failed" "Run 'backup --bitwarden' in a terminal to see why."
+fi

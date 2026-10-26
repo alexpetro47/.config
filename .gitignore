@@ -146,6 +146,7 @@ rclone/rclone.conf
 scripts/*
 !scripts/backup
 !scripts/backup-bitwarden
+!scripts/backup-reminder
 !scripts/backup-repos
 !scripts/lock
 !scripts/speedread-keys
@@ -205,6 +206,8 @@ new-machine-setup/*
 !new-machine-setup/install-packages.sh
 !new-machine-setup/link-configs.sh
 !new-machine-setup/configure-system.sh
+!new-machine-setup/brave-policy-lock
+!new-machine-setup/brave-block-sites.json
 !new-machine-setup/verify.sh
 !new-machine-setup/focus-toggle
 !new-machine-setup/screen-record-toggle
@@ -221,6 +224,8 @@ new-machine-setup/*
 !new-machine-setup/lid-suspend-toggle
 !new-machine-setup/lid-suspend-sync
 !new-machine-setup/vpn-toggle
+!new-machine-setup/security-audit
+!new-machine-setup/brave-cdp-off
 !new-machine-setup/vpn-sync
 !new-machine-setup/airpods-toggle
 !new-machine-setup/picom-toggle
@@ -367,7 +372,9 @@ systemd/*
 systemd/user/*
 !systemd/user/backup-reminder.service
 !systemd/user/backup-reminder.timer
-!systemd/user/kdeconnect.service
+!systemd/user/security-audit.service
+!systemd/user/security-audit.timer
+!systemd/user/taildrop-receive.service
 
 # Clef autofill (Brave extension + native-messaging host; host manifest written by link-configs.sh)
 !clef-autofill/

@@ -1,0 +1,91 @@
+#!/bin/sh
+# Lock Brave's managed site blocklist against casual `sudo nvim`: the file is immutable
+# (chattr +i), its directory is a read-only bind mount over itself, and a root systemd
+# path unit + 1-minute timer put both back if either is undone.
+#   sudo brave-policy-lock install   copy the list + this script into place, enable units
+#   brave-policy-lock                enforce once (what the units run, as root)
+# To change the list on purpose: edit brave-block-sites.json in this repo, rerun install.
+set -eu
+
+DIR=/etc/brave/policies/managed
+LIVE=$DIR/block-sites.json
+GOLDEN=/usr/local/share/brave-policy/block-sites.json
+SELF=/usr/local/sbin/brave-policy-lock
+UNITS=/etc/systemd/system
+
+is_immutable() { [ -e "$1" ] && lsattr -d "$1" 2>/dev/null | cut -c5 | grep -q i; }
+# Top of the mount stack at $DIR, empty when nothing is mounted there.
+mount_opts() { findmnt -n --mountpoint "$DIR" -o OPTIONS 2>/dev/null | tail -n1; }
+
+enforce() {
+    if ! cmp -s "$GOLDEN" "$LIVE"; then
+        while [ -n "$(mount_opts)" ]; do umount "$DIR"; done
+        mkdir -p "$DIR"
+        chattr -i "$LIVE" 2>/dev/null || true
+        install -m 644 "$GOLDEN" "$LIVE"
+        logger -t brave-policy-lock "restored $LIVE"
+    fi
+    # Only touch what's off: every chattr fires the path unit again, so a no-op run must stay silent.
+    is_immutable "$LIVE" || chattr +i "$LIVE"
+    case "$(mount_opts)" in
+        ro*) ;;
+        "") mount --bind "$DIR" "$DIR" && mount -o remount,bind,ro "$DIR" ;;
+        *) mount -o remount,bind,ro "$DIR" ;;
+    esac
+}
+
+install_all() {
+    src=$(readlink -f "$0")
+    list=$(dirname "$src")/brave-block-sites.json
+    # Brave silently ignores the whole policy file if it isn't valid JSON.
+    jq -e '.URLBlocklist | length > 0' "$list" >/dev/null || { echo "invalid $list" >&2; exit 1; }
+
+    mkdir -p "$(dirname "$GOLDEN")"
+    for f in "$GOLDEN" "$SELF"; do chattr -i "$f" 2>/dev/null || true; done
+    install -m 644 "$list" "$GOLDEN"
+    [ "$src" = "$SELF" ] || install -m 755 "$src" "$SELF"
+    chattr +i "$GOLDEN" "$SELF"
+
+    cat > "$UNITS/brave-policy-lock.service" <<EOF
+[Unit]
+Description=Restore and lock Brave managed site blocklist
+
+[Service]
+Type=oneshot
+ExecStart=$SELF
+EOF
+    cat > "$UNITS/brave-policy-lock.path" <<EOF
+[Unit]
+Description=Watch Brave managed site blocklist
+
+[Path]
+PathChanged=$LIVE
+PathChanged=$GOLDEN
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    # Catches what inotify can't see, like a umount of the read-only bind.
+    cat > "$UNITS/brave-policy-lock.timer" <<EOF
+[Unit]
+Description=Periodically re-lock Brave managed site blocklist
+
+[Timer]
+OnBootSec=10s
+OnUnitActiveSec=1min
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target
+EOF
+    systemctl daemon-reload
+    systemctl enable --now brave-policy-lock.path brave-policy-lock.timer
+    enforce
+}
+
+[ "$(id -u)" -eq 0 ] || { echo "run as root" >&2; exit 1; }
+case "${1:-}" in
+    install) install_all ;;
+    "") enforce ;;
+    *) echo "usage: brave-policy-lock [install]" >&2; exit 2 ;;
+esac

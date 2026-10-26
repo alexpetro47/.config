@@ -9,28 +9,8 @@ curl -fsSL https://tailscale.com/install.sh | sh
 sudo tailscale up
 ```
 
-kdeconnect pairing - one-time per machine (pairing keys live untracked in ~/.config/kdeconnect).
-Daemon runs as `kdeconnect.service` (systemd --user, `Restart=always`), enabled by
-configure-system.sh. Same Wi-Fi, open KDE Connect app on the phone (iOS only announces
-while foregrounded), then:
-```
-kdeconnect-cli --list-available   # get device id
-kdeconnect-cli --pair -d <id>     # accept prompt on phone
-```
-If discovery fails (AP client isolation), use "Add device by IP" in the iOS app.
-
-Incoming files -> ~/Downloads. The share plugin's destination is per-device config, and the
-device dir is named after the phone's id, so it is untracked (public repo) and has to be set
-once per newly paired device:
-```
-for d in ~/.config/kdeconnect/*/; do
-  mkdir -p "$d/kdeconnect_share"
-  printf '[General]\nincoming_path=%s/Downloads\n' "$HOME" > "$d/kdeconnect_share/config"
-done
-systemctl --user restart kdeconnect.service
-```
-KDE Connect's own default is the XDG download dir, which is already ~/Downloads - this just
-pins it so it cannot drift with user-dirs.dirs.
+Phone <-> laptop files: Taildrop. iOS share sheet -> Tailscale -> thinkpad-p14s lands in
+~/Downloads (`taildrop-receive.service`). Laptop -> phone: `tailscale file cp <file> iphone-15:`.
 
 opendrop - AirDrop from Linux (installed by install-packages.sh: `owl` built from source,
 `opendrop` via uv). No iPhone app: the phone uses its built-in AirDrop, set to
@@ -62,8 +42,10 @@ Opt-in: `GAMING=1 ./install-packages.sh`, or `./gaming-setup.sh` alone. Installs
 Manual (Steam stores these per game, not scriptable while Steam runs):
 1. Cyberpunk 2077 → Properties → Compatibility → Proton Experimental
 2. Launch Options:
-   `MANGOHUD=1 MANGOHUD_CONFIG=fps_limit=60,no_display PROTON_USE_NTSYNC=1 gamemoderun %command% --launcher-skip -skipStartScreen`
+   `MANGOHUD=1 MANGOHUD_CONFIG=fps_limit=60,no_display,gpu_stats,gpu_power,gpu_temp,gpu_core_clock,cpu_stats,cpu_power,cpu_temp,vram,ram,output_folder=/home/alexpetro/.var/app/com.valvesoftware.Steam/mangologs,autostart_log=5,log_interval=100 PROTON_USE_NTSYNC=1 gamemoderun %command% --launcher-skip -skipStartScreen`
    - `fps_limit=60` stands in for VSync, which the game locks while FSR 3 frame gen is on
+   - `autostart_log=5` writes a per-session perf CSV (fps, frametime, GPU/CPU load, clocks, power, temps) to `~/.var/app/com.valvesoftware.Steam/mangologs/` (folder must exist; inside the Flatpak sandbox so it's writable). `Shift_R+F12` shows the HUD
+   - Tuning A/B: in-game Settings → Graphics → Run Benchmark, one change per run, drop `fps_limit=60` while benchmarking. GPU power pinned at a flat ceiling = power-limited (perf mode / TDP), GPU ~100% under its limit = settings-limited
 3. Launch once (creates the prefix), quit, run `cp2077-settings` (FSR 3 Balanced + frame gen, tuned for the Radeon 890M)
 4. Before playing: `Alt+Shift+o` (perf mode), plugged in; close Brave / idle Claude sessions, `docker pause` agentic_os containers
 

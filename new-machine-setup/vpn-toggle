@@ -1,11 +1,11 @@
 #!/bin/bash
-# vpn-toggle - Toggle Tailscale exit node (DigitalOcean droplet)
+# vpn-toggle - Toggle Tailscale exit node (auto:any picks the best one, Mullvad included)
 # Server is never modified; this only changes the laptop-side route.
 
-EXIT_NODE_IP="100.101.204.6"
+EXIT_NODE="auto:any"
 
 if tailscale status 2>/dev/null | grep -q '; exit node;'; then
-    # Currently routing through droplet - turn off
+    # Currently routing through an exit node - turn off
     if ! out=$(tailscale set --exit-node= 2>&1); then
         notify-send -u critical "VPN" "Failed to disable: $out"
         exit 1
@@ -14,10 +14,10 @@ if tailscale status 2>/dev/null | grep -q '; exit node;'; then
     polybar-msg action vpn hook 0 2>/dev/null
 else
     # Not routing - turn on
-    if ! out=$(tailscale set --exit-node="$EXIT_NODE_IP" --exit-node-allow-lan-access=true 2>&1); then
+    if ! out=$(tailscale set --exit-node="$EXIT_NODE" --exit-node-allow-lan-access=true 2>&1); then
         notify-send -u critical "VPN" "Failed to enable: $out"
         exit 1
     fi
-    notify-send -u low "VPN" "On - routing through droplet"
+    notify-send -u low "VPN" "On - routing through exit node"
     polybar-msg action vpn hook 1 2>/dev/null
 fi

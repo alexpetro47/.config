@@ -114,6 +114,16 @@ if [ -f "$CONFIG_DIR/new-machine-setup/vpn-sync" ]; then
     _link_config "$CONFIG_DIR/new-machine-setup/vpn-sync" "$HOME/.local/bin/vpn-sync"
 fi
 
+# Untick Brave remote debugging at login (i3 exec)
+if [ -f "$CONFIG_DIR/new-machine-setup/brave-cdp-off" ]; then
+    _link_config "$CONFIG_DIR/new-machine-setup/brave-cdp-off" "$HOME/.local/bin/brave-cdp-off"
+fi
+
+# Security drift check (run monthly by security-audit.timer)
+if [ -f "$CONFIG_DIR/new-machine-setup/security-audit" ]; then
+    _link_config "$CONFIG_DIR/new-machine-setup/security-audit" "$HOME/.local/bin/security-audit"
+fi
+
 # Voice chat (spoken conversation with a Claude agent)
 for _vc in voice-chat voice-chat-parse voice-chat-tts voice-chat-speak-kokoro voice-chat-speak-xtts; do
     if [ -f "$CONFIG_DIR/new-machine-setup/$_vc" ]; then
@@ -298,6 +308,25 @@ mkdir -p "$HOME/.local/share/applications"
 # Jupyter Lab
 if [ -f "$CONFIG_DIR/applications/jupyter-lab.desktop" ]; then
     _link_config "$CONFIG_DIR/applications/jupyter-lab.desktop" "$HOME/.local/share/applications/jupyter-lab.desktop"
+fi
+
+# =============================================================================
+# SSH KEY CACHING
+# =============================================================================
+# SSH_AUTH_SOCK is gpg-agent. First use of the passphrase-protected key adds it to the agent,
+# which then asks at most once per 8h. Written, not symlinked: ssh rejects a group-writable
+# config, and a fresh clone's umask leaves repo files 664.
+if [ ! -f "$HOME/.ssh/config" ]; then
+    mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
+    printf 'Host *\n    AddKeysToAgent yes\n' > "$HOME/.ssh/config"
+    chmod 600 "$HOME/.ssh/config"
+    log "~/.ssh/config written (AddKeysToAgent)"
+fi
+if ! grep -qs '^default-cache-ttl-ssh' "$HOME/.gnupg/gpg-agent.conf"; then
+    mkdir -p "$HOME/.gnupg" && chmod 700 "$HOME/.gnupg"
+    printf 'default-cache-ttl-ssh 28800\nmax-cache-ttl-ssh 28800\n' >> "$HOME/.gnupg/gpg-agent.conf"
+    gpgconf --reload gpg-agent 2>/dev/null || true
+    log "gpg-agent ssh cache set to 8h"
 fi
 
 log "Symlink creation complete!"

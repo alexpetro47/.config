@@ -20,6 +20,8 @@ flatpak --user remote-add --if-not-exists flathub https://flathub.org/repo/flath
 flatpak --user install -y flathub com.valvesoftware.Steam net.davidotek.pupgui2
 # Layer branch must match Steam's runtime branch (org.freedesktop.Platform/26.08)
 flatpak --user install -y flathub org.freedesktop.Platform.VulkanLayer.MangoHud//26.08
+# MangoHud output_folder (Cyberpunk launch options log here); inside Steam's sandbox so it's writable
+mkdir -p "$HOME/.var/app/com.valvesoftware.Steam/mangologs"
 
 # Perf mode toggle (perf-mode-toggle, Alt+Shift+o): root-owned sysfs helper + NOPASSWD rule.
 # Copied, not symlinked: a user-writable target in sudoers would be a root escalation.

@@ -81,7 +81,6 @@ sudo apt install -y \
     flatpak \
     libsecret-tools \
     libheif-examples \
-    kdeconnect \
     libpcap-dev \
     libev-dev \
     libnl-3-dev \

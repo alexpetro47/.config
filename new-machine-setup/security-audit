@@ -1,0 +1,41 @@
+#!/bin/bash
+# security-audit - Recheck laptop hardening for drift. No sudo, read-only.
+# Usage: security-audit            # print results
+#        security-audit --notify   # dunst popup listing failures (security-audit.timer, monthly)
+
+RED='\033[0;31m'; GREEN='\033[0;32m'; NC='\033[0m'
+PASS=0; FAILED=()
+
+pass() { ((PASS++)); echo -e "${GREEN}✓${NC} $1"; }
+fail() { FAILED+=("$1"); echo -e "${RED}✗${NC} $1"; }
+check() { if eval "$2" &>/dev/null; then pass "$1"; else fail "$1"; fi; }
+
+echo "=== Device ==="
+check "full-disk encryption" "lsblk -no TYPE | grep -qx crypt"
+check "Secure Boot" "mokutil --sb-state | grep -q enabled"
+check "unattended-upgrades" "systemctl is-enabled unattended-upgrades"
+check "no pending reboot" "[ ! -f /var/run/reboot-required ]"
+check "screen locker running" "pgrep -x xss-lock"
+
+echo "=== Network ==="
+# systemctl reports ufw.service active even when the firewall is off; ufw.conf is the truth.
+check "ufw enabled" "grep -q '^ENABLED=yes' /etc/ufw/ufw.conf"
+check "sshd off" "! systemctl is-active ssh.service ssh.socket | grep -qx active"
+check "VPN exit node online" "tailscale exit-node list | grep -v offline | grep -q ts.net"
+# Docker-published ports skip ufw, so anything not bound to loopback is reachable from the LAN.
+check "docker ports loopback-only" "! docker ps --format '{{.Ports}}' | grep -qE '(0\.0\.0\.0:|\[::\]:|:::)[0-9]'"
+
+echo "=== Secrets ==="
+for key in ~/.ssh/*; do
+    grep -q 'PRIVATE KEY' "$key" 2>/dev/null || continue
+    check "ssh key passphrase: $(basename "$key")" "! ssh-keygen -y -P '' -f '$key'"
+done
+envs=$(find ~/Documents -maxdepth 5 -name '.env*' ! -name '*.example' ! -path '*/node_modules/*' 2>/dev/null | wc -l)
+check "no plaintext .env files ($envs found)" "[ $envs -eq 0 ]"
+
+echo -e "\nPass: $PASS  Fail: ${#FAILED[@]}"
+
+if [[ "${1:-}" == "--notify" && ${#FAILED[@]} -gt 0 ]]; then
+    notify-send -u normal "Security audit: ${#FAILED[@]} failing" "$(printf '• %s\n' "${FAILED[@]}")"
+fi
+exit ${#FAILED[@]}

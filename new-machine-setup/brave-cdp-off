@@ -1,0 +1,11 @@
+#!/bin/bash
+# brave-cdp-off - Untick Brave's saved "Allow remote debugging" at login (i3 exec), so the
+# logged-in profile only exposes CDP on demand: browse-clef --mine reopens brave://inspect
+# to tick it again, and it stays on until the next login.
+# Brave writes Local State from memory on exit, so this only works while Brave is closed.
+
+f="$HOME/.config/BraveSoftware/Brave-Browser/Local State"
+[ -f "$f" ] || exit 0
+pgrep -x brave >/dev/null && exit 0
+jq '.devtools.remote_debugging["user-enabled"] = false' "$f" >"$f.tmp" && mv "$f.tmp" "$f"
+rm -f "$HOME/.config/BraveSoftware/Brave-Browser/DevToolsActivePort"

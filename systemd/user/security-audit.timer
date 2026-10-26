@@ -1,0 +1,11 @@
+[Unit]
+Description=Monthly laptop security drift check
+
+[Timer]
+OnCalendar=monthly
+# Catch up after boot if the laptop was asleep when the month rolled over.
+Persistent=true
+RandomizedDelaySec=1h
+
+[Install]
+WantedBy=timers.target

@@ -88,7 +88,7 @@ bindsym $mod+t exec --no-startup-id telegram
 bindsym $mod+f exec --no-startup-id rofi -show drun
 # bindsym $mod+r exec --no-startup-id reaper
 bindsym $mod+r exec --no-startup-id "pkill -x Cap; while pgrep -x Cap >/dev/null; do sleep 0.1; done; exec Cap"
-bindsym $mod+h exec --no-startup-id google-chrome --remote-debugging-port=9222
+bindsym $mod+h exec --no-startup-id google-chrome
 bindsym $mod+m exec --no-startup-id spotify
 bindsym $mod+e exec --no-startup-id thunar ~/Downloads
 bindsym $mod+shift+d exec --no-startup-id brave-browser --app=https://excalidraw.com
@@ -104,7 +104,7 @@ bindsym $mod+Shift+t exec --no-startup-id google-chrome --app=https://teams.micr
 
 
 # Polybar toggle
-# bindsym $mod+Shift+b exec --no-startup-id polybar-msg cmd toggle
+bindsym $mod+Shift+b exec --no-startup-id polybar-msg cmd toggle
 
 # Theme toggle (gruvbox dark/light)
 bindsym $mod+ctrl+t exec --no-startup-id ~/.local/bin/toggle-theme
@@ -178,6 +178,8 @@ exec --no-startup-id greenclip daemon
 exec_always --no-startup-id $HOME/.config/polybar/launch.sh
 exec_always --no-startup-id "sleep 1 && ~/.local/bin/lid-suspend-sync"
 exec_always --no-startup-id "sleep 1 && ~/.local/bin/vpn-sync"
+# Browser CDP is on-demand only: untick Brave's saved remote-debugging pref each login.
+exec --no-startup-id ~/.local/bin/brave-cdp-off
 exec_always --no-startup-id "sleep 3 && xset r rate 250 40"
 exec_always --no-startup-id setxkbmap -option ctrl:nocaps -layout us
 

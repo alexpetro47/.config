@@ -59,10 +59,17 @@ systemctl --user daemon-reload
 systemctl --user enable --now backup-reminder.timer 2>/dev/null || log "WARN: backup-reminder.timer enable failed"
 log "Backup reminder timer enabled"
 
-# KDE Connect daemon. Runs under systemd rather than an i3 exec line so it comes back
-# on its own when it dies or loses the session bus (Restart=always).
-systemctl --user enable --now kdeconnect.service 2>/dev/null || log "WARN: kdeconnect.service enable failed"
-log "KDE Connect daemon enabled"
+systemctl --user enable --now security-audit.timer 2>/dev/null || log "WARN: security-audit.timer enable failed"
+log "Security audit timer enabled"
+
+# Taildrop (phone <-> laptop files over Tailscale; replaces KDE Connect). The operator lets
+# the user-level receiver run without root.
+sudo tailscale set --operator="$USER" 2>/dev/null || log "WARN: tailscale operator not set (tailscale not up yet?)"
+systemctl --user enable --now taildrop-receive.service 2>/dev/null || log "WARN: taildrop-receive.service enable failed"
+log "Taildrop receiver enabled"
+
+# KDE Connect and syncthing stay off: both listen on every network, including public wifi.
+systemctl --user disable --now kdeconnect.service syncthing.service 2>/dev/null || true
 
 # TLP power management - optimized for unplugged laptop use
 if command -v tlp &>/dev/null; then
@@ -100,6 +107,31 @@ if command -v tlp &>/dev/null; then
 fi
 
 # =============================================================================
+# NETWORK HARDENING (public wifi)
+# =============================================================================
+# sshd: keys only, no root. Ubuntu's sshd_config Includes sshd_config.d first, so these win.
+SSHD_HARDENING="PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin no"
+if [ -d /etc/ssh/sshd_config.d ]; then
+    echo "$SSHD_HARDENING" | sudo tee /etc/ssh/sshd_config.d/10-hardening.conf >/dev/null
+    sudo sshd -t && sudo systemctl reload ssh 2>/dev/null || true
+    log "sshd hardened (keys only, no root)"
+    # Nothing connects in; Tailscale SSH covers remote access if ever needed.
+    sudo systemctl disable --now ssh.service ssh.socket 2>/dev/null || true
+    log "sshd disabled"
+fi
+
+# ufw: drop all inbound except over Tailscale. Docker-published ports bypass ufw.
+if command -v ufw &>/dev/null; then
+    sudo ufw default deny incoming >/dev/null
+    sudo ufw default allow outgoing >/dev/null
+    sudo ufw allow in on tailscale0 >/dev/null
+    sudo ufw --force enable >/dev/null
+    log "ufw enabled (deny inbound, allow tailscale0)"
+fi
+
+# =============================================================================
 # BLUETOOTH (AirPods Pro compatibility)
 # =============================================================================
 if [ -f /etc/bluetooth/main.conf ]; then
@@ -129,27 +161,11 @@ fi
 # =============================================================================
 # Managed policy: blocked domains (and their subdomains) show an error page, and the
 # block can't be switched off from brave://settings. Check it at brave://policy.
+# List lives in brave-block-sites.json; brave-policy-lock keeps the installed copy
+# immutable, read-only mounted, and auto-restored (see that script).
 if command -v brave-browser &>/dev/null; then
-    BRAVE_POLICY=/etc/brave/policies/managed/block-sites.json
-    BRAVE_POLICY_JSON='{
-  "URLBlocklist": [
-    "instagram.com",
-    "pinterest.com",
-    "pin.it",
-    "x.com",
-    "twitter.com",
-    "pornhub.com",
-    "dirtyship.com",
-    "chaturbate.com"
-  ]
-}'
-    if [ "$(cat "$BRAVE_POLICY" 2>/dev/null)" != "$BRAVE_POLICY_JSON" ]; then
-        sudo mkdir -p "$(dirname "$BRAVE_POLICY")"
-        echo "$BRAVE_POLICY_JSON" | sudo tee "$BRAVE_POLICY" >/dev/null
-        log "Brave site blocklist written - restart Brave to apply"
-    else
-        log "Brave site blocklist already set"
-    fi
+    sudo "$SCRIPT_DIR/brave-policy-lock" install
+    log "Brave site blocklist locked - restart Brave to apply"
 fi
 
 # =============================================================================

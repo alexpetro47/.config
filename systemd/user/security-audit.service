@@ -1,0 +1,11 @@
+[Unit]
+Description=Monthly laptop security drift check
+# notify-send needs the graphical session's dbus.
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/alexpetro/.local/bin/security-audit --notify
+# Failures exit non-zero by design; the popup is the report, not a unit failure.
+SuccessExitStatus=1-255

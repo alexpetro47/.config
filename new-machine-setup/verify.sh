@@ -34,7 +34,8 @@ done
 
 section "Services"
 systemctl is-enabled docker &>/dev/null && pass "docker" || fail "docker"
-systemctl --user is-active kdeconnect.service &>/dev/null && pass "kdeconnect.service" || fail "kdeconnect.service"
+[ -f /etc/ssh/sshd_config.d/10-hardening.conf ] && pass "sshd hardening" || fail "sshd hardening"
+grep -q "^ENABLED=yes" /etc/ufw/ufw.conf && pass "ufw enabled" || fail "ufw enabled"
 
 section "Post-reboot"
 [[ "$SHELL" == */zsh ]] && pass "shell=zsh" || warn "shell=zsh"
